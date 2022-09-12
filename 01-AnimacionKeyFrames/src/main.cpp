@@ -1395,8 +1395,8 @@ void applicationLoop() {
 				state = 1;
 				break;
 			case 1:
-				modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.0f, 0.0f, 0.01f));
-				advanceCount += 0.01f;
+				modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.0f, 0.0f, 0.05f));
+				advanceCount += 0.15f;
 				rotWheelsX += 0.05f;
 				rotWheelsY -= 0.02f;
 				if (rotWheelsX > 0.25f)
@@ -1410,14 +1410,26 @@ void applicationLoop() {
 				}
 				break;
 			case 2:
-				modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.5f, 0.0f, 0.0f));
+				modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.0f, 0.0f, 0.025f));
 				modelMatrixEclipse = glm::rotate(modelMatrixEclipse, glm::radians(0.5f), glm::vec3(0.0, 1.0, 0.0));
+				modelMatrixFrontalWheels = glm::rotate(modelMatrixFrontalWheels, rotWheelsY, glm::vec3(0, 1, 0));
+
+				if (rotWheelsY < 0.15f) {
+					rotWheelsY += 0.05f;
+				}
 				rotCount += 0.5;
-				if(rotCount > 90.0){
-					rotCount = 0.0;
+				if (rotCount >= 90) {
+					rotCount = 0;
 					state = 0;
-					if(numberAdvance > 4)
+
+					rotWheelsY = 0.0f;
+					modelMatrixFrontalWheels = glm::rotate(modelMatrixFrontalWheels, 0.0f, glm::vec3(0, 1, 0));
+					rotWheelsX = 0.0f;
+					modelMatrixFrontalWheels = glm::rotate(modelMatrixFrontalWheels, 0.0f, glm::vec3(1, 0, 0));
+
+					if (numberAdvance > 4) {
 						numberAdvance = 1;
+					}
 				}
 				break;
 		}
