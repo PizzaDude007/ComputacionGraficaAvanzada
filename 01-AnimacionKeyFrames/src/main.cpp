@@ -103,6 +103,14 @@ Model modelBuzzRightFoot;
 Model modelBuzzRightWing1;
 Model modelBuzzRightWing2;
 
+//Modelos Adicionales 
+Model modelAmongUs;
+Model modelDroids;
+//Model modelSpongeBob; //Bob Esponja
+//Model modelSunshineStar; //Estrella Mario Sunshine
+
+
+
 GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint skyboxTextureID;
 
@@ -133,6 +141,12 @@ glm::mat4 modelMatrixLambo = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixDart = glm::mat4(1.0f);
 glm::mat4 modelMatrixBuzz = glm::mat4(1.0f);
+
+glm::mat4 modelMatrixAmongUs = glm::mat4(1.0f);
+glm::mat4 modelMatrixDroids = glm::mat4(1.0f);
+
+//glm::mat4 modelMatrixSpongeBob = glm::mat4(1.0f);
+//glm::mat4 modelMatrixStar = glm::mat4(1.0f);
 
 float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
 float rotBuzzHead = 0.0, rotBuzzLeftArm1 = 0.0, rotBuzzLeftArm2 = 0.0, rotBuzzLeftHand = 0.0, rotBuzzRightArm1 = 0.0, rotBuzzRightArm2 = 0.0, rotBuzzRightHand = 0.0, rotBuzzLeftLeg = 0.0, rotBuzzRightLeg = 0.0;
@@ -372,6 +386,22 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	modelBuzzRightWing1.setShader(&shaderMulLighting);
 	modelBuzzRightWing2.loadModel("../models/buzz/buzzlightyRightWing2.obj");
 	modelBuzzRightWing2.setShader(&shaderMulLighting);
+
+	// **************** Nuevos Modelos *****************************************************
+
+	modelAmongUs.loadModel("../models/download/AmongUs/among us.obj");
+	modelAmongUs.setShader(&shaderMulLighting);
+
+	modelDroids.loadModel("../models/download/Droids/droids.obj");
+	modelDroids.setShader(&shaderMulLighting);
+
+	////Bob Esponja
+	//modelSpongeBob.loadModel("../models/download/Sponge_Bob/SpongeBob.obj");
+	//modelSpongeBob.setShader(&shaderMulLighting);
+
+	////Estrella Mario Sunshine
+	//modelSunshineStar.loadModel("../models/download/Shine_Sprite/Shine_Sprite.obj");
+	//modelSunshineStar.setShader(&shaderMulLighting);
 
 
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
@@ -623,6 +653,12 @@ void destroy() {
 	modelBuzzRightWing2.destroy();
 	modelBuzzTorso.destroy();
 	modelBuzzHip.destroy();
+
+	modelAmongUs.destroy();
+	modelDroids.destroy();
+
+	/*modelSpongeBob.destroy();
+	modelSunshineStar.destroy();*/
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -902,6 +938,16 @@ void applicationLoop() {
 
 	modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(3.0f, 0.0f, -5.0f));
 	modelMatrixBuzz = glm::scale(modelMatrixBuzz, glm::vec3(2.5f, 2.5f, 2.5f));
+
+	modelMatrixAmongUs = glm::translate(modelMatrixAmongUs, glm::vec3(-5.0f, 0.0f, -20.0f));
+	modelMatrixAmongUs = glm::scale(modelMatrixAmongUs, glm::vec3(0.025f, 0.025f, 0.025f));
+
+	modelMatrixDroids = glm::translate(modelMatrixDroids, glm::vec3(-10.0f, 0.0f, -15.0f));
+
+	/*modelMatrixSpongeBob = glm::translate(modelMatrixSpongeBob, glm::vec3(-20.0f, 0.0f, -10.0f));
+	modelMatrixSpongeBob = glm::scale(modelMatrixSpongeBob, glm::vec3(0.5f, 0.5f, 0.5f));
+
+	modelMatrixStar = glm::translate(modelMatrixStar, glm::vec3(-10.0f, 0.0f, -15.0f));*/
 
 	// Variables to interpolation key frames
 	fileName = "../animaciones/animation_dart_joints.txt";
@@ -1266,6 +1312,18 @@ void applicationLoop() {
 		modelMatrixBuzzHead = glm::rotate(modelMatrixBuzzHead, rotBuzzHead, glm::vec3(0.0f, 1.0f, 0.0f));
 		//modelMatrixBuzzHead = glm::translate(modelMatrixBuzzHead, glm::vec3(0, 0, 0.017506));
 		modelBuzzHead.render(modelMatrixBuzzHead);
+
+		/*//SpongeBob
+		modelSpongeBob.render(modelMatrixSpongeBob);
+
+		//Sunshine Star
+		modelSunshineStar.render(modelMatrixStar);*/
+
+		//Droids
+		modelDroids.render(modelMatrixDroids);
+
+		//Among Us
+		modelAmongUs.render(modelMatrixAmongUs);
 
 		/*******************************************
 		 * Skybox
