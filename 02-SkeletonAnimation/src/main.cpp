@@ -70,12 +70,19 @@ GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
 
-std::string fileNames[6] = { "../Textures/miPrueba/posx.png",
-		"../Textures/miPrueba/negx.png",
-		"../Textures/miPrueba/posy.png",
-		"../Textures/miPrueba/negy.png",
-		"../Textures/miPrueba/posz.png",
-		"../Textures/miPrueba/negz.png" };
+//std::string fileNames[6] = { "../Textures/miPrueba/posx.png",
+//		"../Textures/miPrueba/negx.png",
+//		"../Textures/miPrueba/posy.png",
+//		"../Textures/miPrueba/negy.png",
+//		"../Textures/miPrueba/posz.png",
+//		"../Textures/miPrueba/negz.png" };
+
+std::string fileNames[6] = { "../Textures/SkyBoxToon/Day_1/px.png",
+		"../Textures/SkyBoxToon/Day_1/nx.png",
+		"../Textures/SkyBoxToon/Day_1/py.png",
+		"../Textures/SkyBoxToon/Day_1/ny.png",
+		"../Textures/SkyBoxToon/Day_1/pz.png",
+		"../Textures/SkyBoxToon/Day_1/nz.png" };
 
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
