@@ -47,6 +47,8 @@ Shader shader;
 Shader shaderSkybox;
 //Shader con multiples luces
 Shader shaderMulLighting;
+//Sahder con varias texturas
+Shader shaderMulTextures;
 
 std::shared_ptr<FirstPersonCamera> camera(new FirstPersonCamera());
 
@@ -55,6 +57,7 @@ Box boxCesped;
 Box boxWalls;
 Box boxHighway;
 Box boxLandingPad;
+Box boxMultiTextures;
 Sphere esfera1(20, 20, 3.0); //se agregó esfera
 
 // Models complex instances
@@ -113,9 +116,9 @@ Model modelDroids;
 //Model modelSunshineStar; //Estrella Mario Sunshine
 
 
-
 GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint skyboxTextureID;
+GLuint textureSpongeID, textureWaterID;
 
 GLenum types[6] = {
 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -290,6 +293,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	shader.initialize("../Shaders/colorShader.vs", "../Shaders/colorShader.fs");
 	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox.fs");
 	shaderMulLighting.initialize("../Shaders/iluminacion_texture_res.vs", "../Shaders/multipleLights.fs");
+	shaderMulTextures.initialize("../Shaders/iluminacion_texture_res.vs", "../Shaders/multipleTextures.fs");
 
 	// Inicializacion de los objetos.
 	skyboxSphere.init();
@@ -427,6 +431,11 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	//modelSunshineStar.loadModel("../models/download/Shine_Sprite/Shine_Sprite.obj");
 	//modelSunshineStar.setShader(&shaderMulLighting);
 
+	boxMultiTextures.init();
+	boxMultiTextures.setShader(&shaderMulTextures);
+	boxMultiTextures.setPosition(glm::vec3(0.0f, 2.0f, 2.0f));
+	boxMultiTextures.setScale(glm::vec3(2.0f, 2.0f, 2.0f));
+	
 
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
 
@@ -617,6 +626,58 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 		std::cout << "Fallo al cargas la textura " << "LandingPad" << std::endl;
 	//Liberamos memoria
 	textureLandingPad.freeImage(bitmap);
+
+	// Crear un objeto de tipo texture
+	Texture textureSponge("../Textures/sponge.jpg");
+	// Cargar el mapa de bits
+	bitmap = textureSponge.loadImage();
+	// Convertir el mapa de bits a un darreglo
+	data = textureSponge.convertToData(bitmap, imageWidth, imageHeight);
+	// Crear la textura con el id
+	glGenTextures(1, &textureSpongeID);
+	//Se enlaza la textura a utilizar
+	glBindTexture(GL_TEXTURE_2D, textureSpongeID);
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//Configurar el filtering
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	if (data) {
+		// Transferir el arreglo data a la tarjeta gráfica
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Fallo al cargas la textura " << "Sponge" << std::endl;
+	//Liberamos memoria
+	textureSponge.freeImage(bitmap);
+
+	// Crear un objeto de tipo texture
+	Texture textureWater("../Textures/water.jpg");
+	// Cargar el mapa de bits
+	bitmap = textureWater.loadImage();
+	// Convertir el mapa de bits a un darreglo
+	data = textureWater.convertToData(bitmap, imageWidth, imageHeight);
+	// Crear la textura con el id
+	glGenTextures(1, &textureWaterID);
+	//Se enlaza la textura a utilizar
+	glBindTexture(GL_TEXTURE_2D, textureWaterID);
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//Configurar el filtering
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	if (data) {
+		// Transferir el arreglo data a la tarjeta gráfica
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Fallo al cargas la textura " << "Water" << std::endl;
+	//Liberamos memoria
+	textureWater.freeImage(bitmap);
 }
 
 void destroy() {
@@ -688,6 +749,8 @@ void destroy() {
 
 	/*modelSpongeBob.destroy();
 	modelSunshineStar.destroy();*/
+
+	boxMultiTextures.destroy();
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -1007,7 +1070,7 @@ void applicationLoop() {
 
 	while (psi) {
 		currTime = TimeManager::Instance().GetTime();
-		if(currTime - lastTime < 0.016666667){ //60 Hz
+		if (currTime - lastTime < 0.016666667) { //60 Hz
 			glfwPollEvents();
 			continue;
 		}
@@ -1024,7 +1087,7 @@ void applicationLoop() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 projection = glm::perspective(glm::radians(45.0f),
-				(float) screenWidth / (float) screenHeight, 0.01f, 100.0f);
+			(float)screenWidth / (float)screenHeight, 0.01f, 100.0f);
 		glm::mat4 view = camera->getViewMatrix();
 
 		// Settea la matriz de vista y projection al shader con solo color
@@ -1042,6 +1105,12 @@ void applicationLoop() {
 		shaderMulLighting.setMatrix4("view", 1, false,
 			glm::value_ptr(view));
 
+		// Settea la matriz de vista y projection al shader con multiples texturas
+		shaderMulTextures.setMatrix4("projection", 1, false,
+			glm::value_ptr(projection));
+		shaderMulTextures.setMatrix4("view", 1, false,
+			glm::value_ptr(view));
+
 		/*******************************************
 		 * Propiedades Luz direccional
 		 *******************************************/
@@ -1051,15 +1120,25 @@ void applicationLoop() {
 		shaderMulLighting.setVectorFloat3("directionalLight.light.specular", glm::value_ptr(glm::vec3(0.9, 0.9, 0.9)));
 		shaderMulLighting.setVectorFloat3("directionalLight.direction", glm::value_ptr(glm::vec3(-1.0, 0.0, 0.0)));
 
+		shaderMulTextures.setVectorFloat3("viewPos", glm::value_ptr(camera->getPosition()));
+		shaderMulTextures.setVectorFloat3("directionalLight.light.ambient", glm::value_ptr(glm::vec3(0.3, 0.3, 0.3)));
+		shaderMulTextures.setVectorFloat3("directionalLight.light.diffuse", glm::value_ptr(glm::vec3(0.7, 0.7, 0.7)));
+		shaderMulTextures.setVectorFloat3("directionalLight.light.specular", glm::value_ptr(glm::vec3(0.9, 0.9, 0.9)));
+		shaderMulTextures.setVectorFloat3("directionalLight.direction", glm::value_ptr(glm::vec3(-1.0, 0.0, 0.0)));
+
 		/*******************************************
 		 * Propiedades SpotLights
 		 *******************************************/
 		shaderMulLighting.setInt("spotLightCount", 0);
 
+		shaderMulTextures.setInt("spotLightCount", 0);
+
 		/*******************************************
 		 * Propiedades PointLights
 		 *******************************************/
 		shaderMulLighting.setInt("pointLightCount", 0);
+
+		shaderMulTextures.setInt("pointLightCount", 0);
 
 		/*******************************************
 		 * Cesped
@@ -1163,7 +1242,7 @@ void applicationLoop() {
 		glBindTexture(GL_TEXTURE_2D, textureLandingPadID);
 		glActiveTexture(GL_TEXTURE0);
 		boxLandingPad.setScale(glm::vec3(10.0f, 0.05f, 10.0f));
-		boxLandingPad.setPosition(glm::vec3(5.0f, 0.05f, - 5.0f));
+		boxLandingPad.setPosition(glm::vec3(5.0f, 0.05f, -5.0f));
 		boxLandingPad.render();
 		glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -1184,14 +1263,14 @@ void applicationLoop() {
 		modelEclipseChasis.render(modelMatrixEclipseChasis);
 
 		glm::mat4 modelMatrixFrontalWheels = glm::mat4(modelMatrixEclipseChasis);
-		modelMatrixFrontalWheels = glm::translate(modelMatrixFrontalWheels, glm::vec3(0.0, 1.05813, 4.11483 ));
+		modelMatrixFrontalWheels = glm::translate(modelMatrixFrontalWheels, glm::vec3(0.0, 1.05813, 4.11483));
 		modelMatrixFrontalWheels = glm::rotate(modelMatrixFrontalWheels, rotWheelsY, glm::vec3(0, 1, 0));
 		modelMatrixFrontalWheels = glm::rotate(modelMatrixFrontalWheels, rotWheelsX, glm::vec3(1, 0, 0));
 		modelMatrixFrontalWheels = glm::translate(modelMatrixFrontalWheels, glm::vec3(0.0, -1.05813, -4.11483)); //mover llantas forntales hacia pivote
 		modelEclipseFrontalWheels.render(modelMatrixFrontalWheels);
 
 		glm::mat4 modelMatrixRearWheels = glm::mat4(modelMatrixEclipseChasis);
-		modelMatrixRearWheels = glm::translate(modelMatrixRearWheels, glm::vec3(0.0, 1.05813, -4.35157 ));
+		modelMatrixRearWheels = glm::translate(modelMatrixRearWheels, glm::vec3(0.0, 1.05813, -4.35157));
 		modelMatrixRearWheels = glm::rotate(modelMatrixRearWheels, rotWheelsX, glm::vec3(1, 0, 0));
 		modelMatrixRearWheels = glm::translate(modelMatrixRearWheels, glm::vec3(0.0, -1.05813, 4.35157));
 		modelEclipseRearWheels.render(modelMatrixRearWheels);
@@ -1210,7 +1289,7 @@ void applicationLoop() {
 		modelHeliHeli.render(modelMatrixHeliHeli);
 
 		glm::mat4 modelMatrixHeliTra = glm::mat4(modelMatrixHeliChasis); //se coloca helice, falta encontrar pivote
-		modelMatrixHeliTra = glm::translate(modelMatrixHeliTra, glm::vec3(0.403866f,  2.0966f, - 5.64753f));
+		modelMatrixHeliTra = glm::translate(modelMatrixHeliTra, glm::vec3(0.403866f, 2.0966f, -5.64753f));
 		modelMatrixHeliTra = glm::rotate(modelMatrixHeliTra, glm::radians(rotHelHelY), glm::vec3(1.0f, 0.0f, 0.0f));
 		modelMatrixHeliTra = glm::translate(modelMatrixHeliTra, glm::vec3(-0.403866f, -2.0966f, 5.64753f));
 		modelHeliTra.render(modelMatrixHeliTra);
@@ -1228,7 +1307,7 @@ void applicationLoop() {
 		modelLamboLeftDor.render(modelMatrixLamboLeftDor);
 		modelMatrixLamboRightDor = glm::mat4(modelMatrixLamboChasis);
 		modelMatrixLamboRightDor = glm::translate(modelMatrixLamboRightDor, glm::vec3(1.08676, 0.707316, 0.982601));
-		modelMatrixLamboRightDor = glm::rotate(modelMatrixLamboRightDor, glm::radians( dorRotCountLambo), glm::vec3(1.0, 0, 0));
+		modelMatrixLamboRightDor = glm::rotate(modelMatrixLamboRightDor, glm::radians(dorRotCountLambo), glm::vec3(1.0, 0, 0));
 		modelMatrixLamboRightDor = glm::translate(modelMatrixLamboRightDor, glm::vec3(-1.08676, -0.707316, -0.982601));
 		modelLamboRightDor.render(modelMatrixLamboRightDor);
 
@@ -1400,6 +1479,18 @@ void applicationLoop() {
 
 		//Among Us
 		modelAmongUs.render(modelMatrixAmongUs);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, textureWaterID);
+		shaderMulTextures.setInt("texture1", 4);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, textureSpongeID);
+		shaderMulTextures.setInt("texture2", 2);
+		shaderMulTextures.setFloat("porcentajeMezcla", 0.5f);
+		boxMultiTextures.render();
+
 
 		/*******************************************
 		 * Skybox
