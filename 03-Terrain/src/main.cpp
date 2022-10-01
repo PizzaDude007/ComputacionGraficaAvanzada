@@ -80,6 +80,11 @@ Model modelDartLegoRightLeg;
 // Model animate instance
 // Mayow
 Model mayowModelAnimate;
+
+// New Models
+Model mGolem;
+Model mAmongUs;
+
 // Terrain model instance
 Terrain terrain(-1, -1, 200, 8, "../Textures/highmap.png");
 
@@ -94,12 +99,12 @@ GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
 
-std::string fileNames[6] = { "../Textures/mp_bloodvalley/blood-valley_ft.tga",
-		"../Textures/mp_bloodvalley/blood-valley_bk.tga",
-		"../Textures/mp_bloodvalley/blood-valley_up.tga",
-		"../Textures/mp_bloodvalley/blood-valley_dn.tga",
-		"../Textures/mp_bloodvalley/blood-valley_rt.tga",
-		"../Textures/mp_bloodvalley/blood-valley_lf.tga" };
+std::string fileNames[6] = { "../Textures/SkyBoxToon/Day_1/px.png",
+		"../Textures/SkyBoxToon/Day_1/nx.png",
+		"../Textures/SkyBoxToon/Day_1/py.png",
+		"../Textures/SkyBoxToon/Day_1/ny.png",
+		"../Textures/SkyBoxToon/Day_1/pz.png",
+		"../Textures/SkyBoxToon/Day_1/nz.png" };
 
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
@@ -113,6 +118,10 @@ glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixDart = glm::mat4(1.0f);
 glm::mat4 modelMatrixMayow = glm::mat4(1.0f);
 
+// New models
+glm::mat4 m4Golem = glm::mat4(1.0f);
+glm::mat4 m4AmongUs = glm::mat4(1.0f);
+
 float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
 int modelSelected = 0;
 bool enableCountSelected = true;
@@ -122,6 +131,16 @@ bool saveFrame = false, availableSave = true;
 std::ofstream myfile;
 std::string fileName = "";
 bool record = false;
+
+// Índices para la animación
+int iAnimGolem = 1;
+int iAnimMay = 1;
+int iAnimAmongUs = 1;
+
+//Vectores para la animación
+glm::vec3 vecMovMay = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecMovGolem = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecMovAmongUs = glm::vec3(0.0f, 0.0f, 0.0f);
 
 // Joints interpolations Dart Lego
 std::vector<std::vector<float>> keyFramesDartJoints;
@@ -273,6 +292,14 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	//Mayow
 	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
 	mayowModelAnimate.setShader(&shaderMulLighting);
+
+	//Golem
+	mGolem.loadModel("../models/golem/golem1.fbx");
+	mGolem.setShader(&shaderMulLighting);
+
+	//AmongUs
+	mAmongUs.loadModel("../models/download/AmongUs/amongus_anim.fbx");
+	mAmongUs.setShader(&shaderMulLighting);
 
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
 
@@ -508,6 +535,9 @@ void destroy() {
 	// Custom objects animate
 	mayowModelAnimate.destroy();
 
+	mGolem.destroy();
+	mAmongUs.destroy();
+
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDeleteTextures(1, &textureCespedID);
@@ -581,108 +611,78 @@ bool processInput(bool continueApplication) {
 	offsetY = 0;
 
 	// Seleccionar modelo
-	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS){
+	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
 		enableCountSelected = false;
 		modelSelected++;
-		if(modelSelected > 2)
+		if (modelSelected > 2)
 			modelSelected = 0;
-		if(modelSelected == 1)
-			fileName = "../animaciones/animation_dart_joints.txt";
+		if (modelSelected == 0)
+			fileName = "May";
+		if (modelSelected == 1)
+			fileName = "golem";
 		if (modelSelected == 2)
-			fileName = "../animaciones/animation_dart.txt";
+			fileName = "AmongUs";
 		std::cout << "modelSelected:" << modelSelected << std::endl;
 	}
-	else if(glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
+	else if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
 		enableCountSelected = true;
 
-	// Guardar key frames
-	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
-			&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-		record = true;
-		if(myfile.is_open())
-			myfile.close();
-		myfile.open(fileName);
-	}
-	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE
-			&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-		record = false;
-		myfile.close();
-		if(modelSelected == 1)
-			keyFramesDartJoints = getKeyRotFrames(fileName);
-		if (modelSelected == 2)
-			keyFramesDart = getKeyFrames(fileName);
-	}
-	if(availableSave && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
-		saveFrame = true;
-		availableSave = false;
-	}if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
-		availableSave = true;
-
-	// Dart Lego model movements
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg -= 0.02;
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, 0.02f, glm::vec3(0, 1, 0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, -0.02f, glm::vec3(0, 1, 0));
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(-0.02, 0.0, 0.0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));
+	// Mayow
+	iAnimMay = 1;
 
 	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0.0f, 0.0f, 0.02f));
-		mayowModelAnimate.setAnimationIndex(0);
+		iAnimMay = 0;
 	} else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0.0f, 0.0f, -0.02f));
-		mayowModelAnimate.setAnimationIndex(0);
+		iAnimMay = 0;
 	}
 	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
 		modelMatrixMayow = glm::rotate(modelMatrixMayow, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
-		mayowModelAnimate.setAnimationIndex(0);
+		iAnimMay = 0;
 	} else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
 		modelMatrixMayow = glm::rotate(modelMatrixMayow, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
-		mayowModelAnimate.setAnimationIndex(0);
+		iAnimMay = 0;
+	}
+
+	//Golem
+	iAnimGolem = 1;
+
+	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4Golem = glm::translate(m4Golem, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimGolem = 0;
+	}
+	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4Golem = glm::translate(m4Golem, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimGolem = 0;
+	}
+	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4Golem = glm::rotate(m4Golem, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimGolem = 0;
+	}
+	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4Golem = glm::rotate(m4Golem, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimGolem = 0;
+	}
+
+	// Among Us
+	iAnimAmongUs = 1;
+
+	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4AmongUs = glm::translate(m4AmongUs, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimAmongUs = 0;
+	}
+	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4AmongUs = glm::translate(m4AmongUs, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimAmongUs = 0;
+	}
+	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4AmongUs = glm::rotate(m4AmongUs, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimAmongUs = 0;
+	}
+	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4AmongUs = glm::rotate(m4AmongUs, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimAmongUs = 0;
 	}
 
 	glfwPollEvents();
@@ -704,6 +704,9 @@ void applicationLoop() {
 
 	modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(13.0f, 0.05f, -5.0f));
 	modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-90.0f), glm::vec3(0, 1, 0));
+
+	m4Golem = glm::translate(m4Golem, glm::vec3(4, 0, 4));//pos inicial
+	m4AmongUs = glm::translate(m4AmongUs, glm::vec3(-4, 0, 4));//pos inicial
 
 	// Variables to interpolation key frames
 	fileName = "../animaciones/animation_dart_joints.txt";
@@ -881,20 +884,56 @@ void applicationLoop() {
 		 * Custom Anim objects obj
 		 *******************************************/
 		//terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
-		glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]));
-		glm::vec3 ejex = glm::normalize(glm::vec3(modelMatrixMayow[0]));
-		glm::vec3 ejez = glm::normalize(glm::cross(ejex, ejey));
-		ejex = glm::normalize(glm::cross(ejey, ejez));
+		glm::vec3 ejeyMayow = glm::normalize(terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]));
+		glm::vec3 ejexMayow = glm::normalize(glm::vec3(modelMatrixMayow[0]));
+		glm::vec3 ejezMayow = glm::normalize(glm::cross(ejexMayow, ejeyMayow));
+		ejexMayow = glm::normalize(glm::cross(ejeyMayow, ejezMayow));
 
-		modelMatrixMayow[0] = glm::vec4(ejex, 0.0f);
-		modelMatrixMayow[1] = glm::vec4(ejey, 0.0f);
-		modelMatrixMayow[2] = glm::vec4(ejez, 0.0f);
+		modelMatrixMayow[0] = glm::vec4(ejexMayow, 0.0f);
+		modelMatrixMayow[1] = glm::vec4(ejeyMayow, 0.0f);
+		modelMatrixMayow[2] = glm::vec4(ejezMayow, 0.0f);
 
 		modelMatrixMayow[3][1] = terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
 		glm::mat4 modelMatrixMayowBody = glm::mat4(modelMatrixMayow);
 		modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
-		mayowModelAnimate.setAnimationIndex(0);
+		mayowModelAnimate.setAnimationIndex(iAnimMay);
 		mayowModelAnimate.render(modelMatrixMayowBody);
+
+		//golem
+		glm::vec3 ejeyGolem = glm::normalize(terrain.getNormalTerrain(m4Golem[3][0], m4Golem[3][2]));
+		glm::vec3 ejexGolem = glm::normalize(glm::vec3(m4Golem[0]));
+		glm::vec3 ejezGolem = glm::normalize(glm::cross(ejexGolem, ejeyGolem));
+		ejexGolem = glm::normalize(glm::cross(ejeyGolem, ejezGolem));
+
+		m4Golem[0] = glm::vec4(ejexGolem, 0.0f);
+		m4Golem[1] = glm::vec4(ejeyGolem, 0.0f);
+		m4Golem[2] = glm::vec4(ejezGolem, 0.0f);
+
+		m4Golem[3][1] = terrain.getHeightTerrain(m4Golem[3][0], m4Golem[3][2]);
+
+		glm::mat4 m4GolemCorp = m4Golem;
+		m4GolemCorp = glm::scale(m4GolemCorp, glm::vec3(0.005f, 0.005f, 0.005f));
+		//m4GolemCorp = glm::translate(m4GolemCorp, vecMovGolem);
+		mGolem.setAnimationIndex(iAnimGolem);
+		mGolem.render(m4GolemCorp);
+
+		//AmongUs
+		glm::vec3 ejeyAmongUs = glm::normalize(terrain.getNormalTerrain(m4AmongUs[3][0], m4AmongUs[3][2]));
+		glm::vec3 ejexAmongUs = glm::normalize(glm::vec3(m4AmongUs[0]));
+		glm::vec3 ejezAmongUs = glm::normalize(glm::cross(ejexAmongUs, ejeyAmongUs));
+		ejexAmongUs = glm::normalize(glm::cross(ejeyAmongUs, ejezAmongUs));
+
+		m4AmongUs[0] = glm::vec4(ejexAmongUs, 0.0f);
+		m4AmongUs[1] = glm::vec4(ejeyAmongUs, 0.0f);
+		m4AmongUs[2] = glm::vec4(ejezAmongUs, 0.0f);
+
+		m4AmongUs[3][1] = terrain.getHeightTerrain(m4AmongUs[3][0], m4AmongUs[3][2]);
+
+		glm::mat4 m4AmongUsCorp = m4AmongUs;
+		//m4AmongUsCorp = glm::translate(m4AmongUsCorp, vecMovAmongUs);
+		m4AmongUsCorp = glm::scale(m4AmongUsCorp, glm::vec3(0.01f, 0.01f, 0.01f));
+		mAmongUs.setAnimationIndex(iAnimAmongUs);
+		mAmongUs.render(m4AmongUsCorp);
 
 		/*******************************************
 		 * Skybox

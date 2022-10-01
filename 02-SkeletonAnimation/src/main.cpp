@@ -303,6 +303,7 @@ void destroy() {
 	mCyborg.destroy();
 	mVaquero.destroy();
 	mGolem.destroy();
+	mAmongUs.destroy();
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
