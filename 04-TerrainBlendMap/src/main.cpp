@@ -82,6 +82,12 @@ Model modelDartLegoRightLeg;
 // Model animate instance
 // Mayow
 Model mayowModelAnimate;
+
+// New Models
+Model mGolem;
+Model mAmongUs;
+Model mVampire;
+
 // Terrain model instance
 Terrain terrain(-1, -1, 200, 8, "../Textures/heightmap.png");
 
@@ -116,6 +122,11 @@ glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixDart = glm::mat4(1.0f);
 glm::mat4 modelMatrixMayow = glm::mat4(1.0f);
 
+// New models
+glm::mat4 m4Golem = glm::mat4(1.0f);
+glm::mat4 m4AmongUs = glm::mat4(1.0f);
+glm::mat4 m4Vampire = glm::mat4(1.0f);
+
 float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
 int modelSelected = 0;
 bool enableCountSelected = true;
@@ -125,6 +136,18 @@ bool saveFrame = false, availableSave = true;
 std::ofstream myfile;
 std::string fileName = "";
 bool record = false;
+
+// Índices para la animación
+int iAnimGolem = 1;
+int iAnimMay = 1;
+int iAnimAmongUs = 1;
+int iAnimVampire = 1;
+
+//Vectores para la animación
+glm::vec3 vecMovMay = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecMovGolem = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecMovAmongUs = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecVampire= glm::vec3(0.0f, 0.0f, 0.0f);
 
 // Joints interpolations Dart Lego
 std::vector<std::vector<float>> keyFramesDartJoints;
@@ -177,15 +200,15 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 
 	if (bFullScreen)
 		window = glfwCreateWindow(width, height, strTitle.c_str(),
-				glfwGetPrimaryMonitor(), nullptr);
+			glfwGetPrimaryMonitor(), nullptr);
 	else
 		window = glfwCreateWindow(width, height, strTitle.c_str(), nullptr,
-				nullptr);
+			nullptr);
 
 	if (window == nullptr) {
 		std::cerr
-				<< "Error to create GLFW window, you can try download the last version of your video card that support OpenGL 3.3+"
-				<< std::endl;
+			<< "Error to create GLFW window, you can try download the last version of your video card that support OpenGL 3.3+"
+			<< std::endl;
 		destroy();
 		exit(-1);
 	}
@@ -278,6 +301,20 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	//Mayow
 	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
 	mayowModelAnimate.setShader(&shaderMulLighting);
+
+	//Golem
+	mGolem.loadModel("../models/golem/golem1.fbx");
+	mGolem.setShader(&shaderMulLighting);
+
+	//AmongUs
+	mAmongUs.loadModel("../models/download/AmongUs/amongus_anim.fbx");
+	mAmongUs.setShader(&shaderMulLighting);
+
+	//Vampire
+	mVampire.loadModel("../models/cyborg/cyborg_anim.fbx");
+	//mVampire.loadModel("../models/download/Vampire/cyborg_anim2.fbx");
+	//mVampire.loadModel("../models/download/AmongUs/amongus_anim.fbx");
+	mVampire.setShader(&shaderMulLighting);
 
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
 
@@ -674,6 +711,10 @@ void destroy() {
 	// Custom objects animate
 	mayowModelAnimate.destroy();
 
+	mGolem.destroy();
+	mAmongUs.destroy();
+	mVampire.destroy();
+
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDeleteTextures(1, &textureCespedID);
@@ -752,94 +793,178 @@ bool processInput(bool continueApplication) {
 	offsetY = 0;
 
 	// Seleccionar modelo
-	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS){
+	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
 		enableCountSelected = false;
 		modelSelected++;
-		if(modelSelected > 2)
+		if (modelSelected > 3)
 			modelSelected = 0;
-		if(modelSelected == 1)
-			fileName = "../animaciones/animation_dart_joints.txt";
+		if (modelSelected == 0)
+			fileName = "May";
+		if (modelSelected == 1)
+			fileName = "golem";
 		if (modelSelected == 2)
-			fileName = "../animaciones/animation_dart.txt";
+			fileName = "AmongUs";
+		if (modelSelected == 3)
+			fileName = "Vampire";
 		std::cout << "modelSelected:" << modelSelected << std::endl;
 	}
-	else if(glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
+	else if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
 		enableCountSelected = true;
 
-	// Guardar key frames
-	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
-			&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-		record = true;
-		if(myfile.is_open())
-			myfile.close();
-		myfile.open(fileName);
-	}
-	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE
-			&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-		record = false;
-		myfile.close();
-		if(modelSelected == 1)
-			keyFramesDartJoints = getKeyRotFrames(fileName);
-		if (modelSelected == 2)
-			keyFramesDart = getKeyFrames(fileName);
-	}
-	if(availableSave && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
-		saveFrame = true;
-		availableSave = false;
-	}if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
-		availableSave = true;
+	// Mayow
+	iAnimMay = 1;
 
-	// Dart Lego model movements
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg -= 0.02;
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, 0.02f, glm::vec3(0, 1, 0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, -0.02f, glm::vec3(0, 1, 0));
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(-0.02, 0.0, 0.0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));
+	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimMay = 0;
+	}
+	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimMay = 0;
+	}
+	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		modelMatrixMayow = glm::rotate(modelMatrixMayow, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimMay = 0;
+	}
+	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		modelMatrixMayow = glm::rotate(modelMatrixMayow, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimMay = 0;
+	}
+
+	//Golem
+	iAnimGolem = 1;
+
+	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4Golem = glm::translate(m4Golem, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimGolem = 0;
+	}
+	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4Golem = glm::translate(m4Golem, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimGolem = 0;
+	}
+	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4Golem = glm::rotate(m4Golem, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimGolem = 0;
+	}
+	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4Golem = glm::rotate(m4Golem, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimGolem = 0;
+	}
+
+	// Among Us
+	iAnimAmongUs = 1;
+
+	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4AmongUs = glm::translate(m4AmongUs, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimAmongUs = 0;
+	}
+	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4AmongUs = glm::translate(m4AmongUs, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimAmongUs = 0;
+	}
+	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4AmongUs = glm::rotate(m4AmongUs, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimAmongUs = 0;
+	}
+	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4AmongUs = glm::rotate(m4AmongUs, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimAmongUs = 0;
+	}
+
+	// Vampire
+	iAnimVampire = 1;
+
+	if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4Vampire = glm::translate(m4Vampire, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimVampire = 0;
+	}
+	else if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4Vampire = glm::translate(m4Vampire, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimVampire = 0;
+	}
+	if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4Vampire = glm::rotate(m4Vampire, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimVampire = 0;
+	}
+	else if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4Vampire = glm::rotate(m4Vampire, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimVampire = 0;
+	}
+
+	//// Guardar key frames
+	//if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
+	//		&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+	//	record = true;
+	//	if(myfile.is_open())
+	//		myfile.close();
+	//	myfile.open(fileName);
+	//}
+	//if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE
+	//		&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+	//	record = false;
+	//	myfile.close();
+	//	if(modelSelected == 1)
+	//		keyFramesDartJoints = getKeyRotFrames(fileName);
+	//	if (modelSelected == 2)
+	//		keyFramesDart = getKeyFrames(fileName);
+	//}
+	//if(availableSave && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
+	//	saveFrame = true;
+	//	availableSave = false;
+	//}if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
+	//	availableSave = true;
+
+	//// Dart Lego model movements
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	//	rotDartHead += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	//	rotDartHead -= 0.02;
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	//	rotDartLeftArm += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	//	rotDartLeftArm -= 0.02;
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+	//	rotDartRightArm += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+	//	rotDartRightArm -= 0.02;
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+	//	rotDartLeftHand += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+	//	rotDartLeftHand -= 0.02;
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+	//	rotDartRightHand += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+	//	rotDartRightHand -= 0.02;
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+	//	rotDartLeftLeg += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+	//	rotDartLeftLeg -= 0.02;
+	//if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	//		glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
+	//	rotDartRightLeg += 0.02;
+	//else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
+	//		glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
+	//	rotDartRightLeg -= 0.02;
+	//if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	//	modelMatrixDart = glm::rotate(modelMatrixDart, 0.02f, glm::vec3(0, 1, 0));
+	//else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	//	modelMatrixDart = glm::rotate(modelMatrixDart, -0.02f, glm::vec3(0, 1, 0));
+	//if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	//	modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(-0.02, 0.0, 0.0));
+	//else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	//	modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));
 
 	glfwPollEvents();
 	return continueApplication;
@@ -860,6 +985,12 @@ void applicationLoop() {
 
 	modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(13.0f, 0.05f, -5.0f));
 	modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-90.0f), glm::vec3(0, 1, 0));
+
+	m4Golem = glm::translate(m4Golem, glm::vec3(-5.0, 0.0, 5.0));
+
+	m4AmongUs = glm::translate(m4AmongUs, glm::vec3(-7.0, 0.0, 10.0));
+
+	m4Vampire = glm::translate(m4Vampire, glm::vec3(-3.0, 0.0, 15.0));
 
 	// Variables to interpolation key frames
 	fileName = "../animaciones/animation_dart_joints.txt";
@@ -948,18 +1079,22 @@ void applicationLoop() {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureTerrainBackgroundID);
 		shaderTerrain.setInt("backgroundTexture", 0);
-		glActiveTexture(GL_TEXTURE2);
+		// Se activa la textura de tierra
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, textureTerrainRID);
-		shaderTerrain.setInt("textureRColor", 2);
-		glActiveTexture(GL_TEXTURE3);
+		shaderTerrain.setInt("rTexture", 1);
+		// Se activa la textura de hierba
+		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, textureTerrainGID);
-		shaderTerrain.setInt("textureGColor", 3);
-		glActiveTexture(GL_TEXTURE4);
+		shaderTerrain.setInt("gTexture", 2);
+		// Se activa la textura del camino
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, textureTerrainBID);
-		shaderTerrain.setInt("textureBColor", 4);
-		glActiveTexture(GL_TEXTURE5);
+		shaderTerrain.setInt("bTexture", 3);
+		// Se activa la textura del blend map
+		glActiveTexture(GL_TEXTURE4);
 		glBindTexture(GL_TEXTURE_2D, textureTerrainBlendMapID);
-		shaderTerrain.setInt("terrainBlendMap", 5);
+		shaderTerrain.setInt("blendMapTexture", 4);
 		shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(40, 40)));
 		terrain.render();
 		shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(0, 0)));
@@ -1063,11 +1198,75 @@ void applicationLoop() {
 		/*******************************************
 		 * Custom Anim objects obj
 		 *******************************************/
+		 //terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
+		glm::vec3 ejeyMayow = glm::normalize(terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]));
+		glm::vec3 ejexMayow = glm::normalize(glm::vec3(modelMatrixMayow[0]));
+		glm::vec3 ejezMayow = glm::normalize(glm::cross(ejexMayow, ejeyMayow));
+		ejexMayow = glm::normalize(glm::cross(ejeyMayow, ejezMayow));
+
+		modelMatrixMayow[0] = glm::vec4(ejexMayow, 0.0f);
+		modelMatrixMayow[1] = glm::vec4(ejeyMayow, 0.0f);
+		modelMatrixMayow[2] = glm::vec4(ejezMayow, 0.0f);
+
 		modelMatrixMayow[3][1] = terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
 		glm::mat4 modelMatrixMayowBody = glm::mat4(modelMatrixMayow);
 		modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
-		mayowModelAnimate.setAnimationIndex(0);
+		mayowModelAnimate.setAnimationIndex(iAnimMay);
 		mayowModelAnimate.render(modelMatrixMayowBody);
+
+		//golem
+		glm::vec3 ejeyGolem = glm::normalize(terrain.getNormalTerrain(m4Golem[3][0], m4Golem[3][2]));
+		glm::vec3 ejexGolem = glm::normalize(glm::vec3(m4Golem[0]));
+		glm::vec3 ejezGolem = glm::normalize(glm::cross(ejexGolem, ejeyGolem));
+		ejexGolem = glm::normalize(glm::cross(ejeyGolem, ejezGolem));
+
+		m4Golem[0] = glm::vec4(ejexGolem, 0.0f);
+		m4Golem[1] = glm::vec4(ejeyGolem, 0.0f);
+		m4Golem[2] = glm::vec4(ejezGolem, 0.0f);
+
+		m4Golem[3][1] = terrain.getHeightTerrain(m4Golem[3][0], m4Golem[3][2]);
+
+		glm::mat4 m4GolemCorp = m4Golem;
+		m4GolemCorp = glm::scale(m4GolemCorp, glm::vec3(0.005f, 0.005f, 0.005f));
+		//m4GolemCorp = glm::translate(m4GolemCorp, vecMovGolem);
+		mGolem.setAnimationIndex(iAnimGolem);
+		mGolem.render(m4GolemCorp);
+
+		//AmongUs
+		glm::vec3 ejeyAmongUs = glm::normalize(terrain.getNormalTerrain(m4AmongUs[3][0], m4AmongUs[3][2]));
+		glm::vec3 ejexAmongUs = glm::normalize(glm::vec3(m4AmongUs[0]));
+		glm::vec3 ejezAmongUs = glm::normalize(glm::cross(ejexAmongUs, ejeyAmongUs));
+		ejexAmongUs = glm::normalize(glm::cross(ejeyAmongUs, ejezAmongUs));
+
+		m4AmongUs[0] = glm::vec4(ejexAmongUs, 0.0f);
+		m4AmongUs[1] = glm::vec4(ejeyAmongUs, 0.0f);
+		m4AmongUs[2] = glm::vec4(ejezAmongUs, 0.0f);
+
+		m4AmongUs[3][1] = terrain.getHeightTerrain(m4AmongUs[3][0], m4AmongUs[3][2]);
+
+		glm::mat4 m4AmongUsCorp = m4AmongUs;
+		//m4AmongUsCorp = glm::translate(m4AmongUsCorp, vecMovAmongUs);
+		m4AmongUsCorp = glm::scale(m4AmongUsCorp, glm::vec3(0.01f, 0.01f, 0.01f));
+		mAmongUs.setAnimationIndex(iAnimAmongUs);
+		mAmongUs.render(m4AmongUsCorp);
+
+		//Vampire
+		glm::vec3 ejeyVampire = glm::normalize(terrain.getNormalTerrain(m4Vampire[3][0], m4Vampire[3][2]));
+		glm::vec3 ejexVampire = glm::normalize(glm::vec3(m4Vampire[0]));
+		glm::vec3 ejezVampire = glm::normalize(glm::cross(ejexVampire, ejeyVampire));
+		ejexVampire = glm::normalize(glm::cross(ejeyVampire, ejezVampire));
+
+		m4Vampire[0] = glm::vec4(ejexVampire, 0.0f);
+		m4Vampire[1] = glm::vec4(ejeyVampire, 0.0f);
+		m4Vampire[2] = glm::vec4(ejezVampire, 0.0f);
+
+		m4Vampire[3][1] = terrain.getHeightTerrain(m4Vampire[3][0], m4Vampire[3][2]);
+
+		glm::mat4 m4VampireCorp = m4Vampire;
+		m4VampireCorp = glm::scale(m4VampireCorp, glm::vec3(0.01f, 0.01f, 0.01f));
+		mVampire.setAnimationIndex(iAnimVampire);
+		mVampire.render(m4VampireCorp);
+
 
 		/*******************************************
 		 * Skybox
