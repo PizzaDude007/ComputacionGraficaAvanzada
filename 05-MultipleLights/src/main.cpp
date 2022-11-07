@@ -305,7 +305,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	modelLampPost2.setShader(&shaderMulLighting);
 
 	//modelLampNew.loadModel("../models/polygon/town/SM_Prop_LampStanding_01.fbx");
-	modelLampNew.loadModel("../models/Street_Light/LampPost.obj");
+	modelLampNew.loadModel("../models/polygon/town/lampara.obj");
+	//modelLampNew.loadModel("../models/Street_Light/LampPost.obj");
 	modelLampNew.setShader(&shaderMulLighting);
 
 	//Mayow
