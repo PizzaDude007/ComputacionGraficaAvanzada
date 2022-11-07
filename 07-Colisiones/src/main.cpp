@@ -809,6 +809,12 @@ bool processInput(bool continueApplication) {
 		std::cout << "Axes[3]=>" << axes[3] << std::endl;
 		std::cout << "Axes[4]=>" << axes[4] << std::endl;
 		std::cout << "Axes[5]=>" << axes[5] << std::endl;
+
+		const unsigned char* botones = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &numeroBotones);
+		std::cout << "Numero de botones :=>" << numeroBotones << std::endl;
+
+		if (botones[0] == GLFW_PRESS)
+			std::cout << "Se presiona el boton cuadrado :=>" << std::endl;
 	}
 
 	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
