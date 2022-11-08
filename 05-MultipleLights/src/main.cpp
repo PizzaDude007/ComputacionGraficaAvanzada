@@ -148,10 +148,10 @@ int maxNumPasosDart = 200;
 int numPasosDart = 0;
 
 // Var animate helicopter
-float rotHelHelY = 0.0;
+//float rotHelHelY = 0.0;
 
 // Var animate lambo dor
-int stateDoor = 0;
+//int stateDoor = 0;
 float dorRotCount = 0.0;
 
 // Lamps positions
@@ -165,6 +165,28 @@ std::vector<float> lamp2Orientation = {21.37 + 90, -65.0 + 90};
 std::vector<glm::vec3> lampNewPosition = { glm::vec3(-20.0, 0, -20.0), //TODO: se debe modificar esto respecto al mapa de texturas
 		glm::vec3(-30.0, 0, -25.0) };
 std::vector<float> lampNewOrientation = { 25 + 90, -65.0 + 90 };
+
+// Var animate helicopter
+int estadoHeli = 0;
+float velRotHelHelY = 50.0f;
+float velRotHelHelTra = 5.0f;
+float rotHelHelY = 0.0;
+float rotHeliTra = 0.0; //para la helice
+float desplHeli = 0.0; //para el movimiento vertical
+float acumDesplHeli = 0.0;
+
+// Var animate lambo dor
+int stateLambo = 0;
+int stateAvanceLambo = 0;
+int stateDoor = 1;
+float dorRotCountLambo = 0.0;
+float rotCountLambo = 0.0f;
+float rotWheelsYLambo = 0.0f;
+float rotWheelsXLambo = 0.0f;
+float maxAdvanceLambo = 0.0f;
+float avanceCountLambo = 0.0f;
+float alfaRot = 0.0f;
+glm::vec3 dirLambo = glm::vec3(-5.0f, -0.5f, 0.0f);
 
 double deltaTime;
 double currTime, lastTime;
@@ -990,6 +1012,32 @@ void applicationLoop() {
 		shaderTerrain.setFloat("spotLights[0].cutOff", cos(glm::radians(12.5f)));
 		shaderTerrain.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));
 
+		shaderMulLighting.setInt("spotLightCount", 2);
+		spotPosition = glm::vec3(modelMatrixLambo[3]);
+		shaderMulLighting.setVectorFloat3("spotLights[1].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.1)));
+		shaderMulLighting.setVectorFloat3("spotLights[1].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.2)));
+		shaderMulLighting.setVectorFloat3("spotLights[1].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
+		shaderMulLighting.setVectorFloat3("spotLights[1].position", glm::value_ptr(spotPosition));
+		shaderMulLighting.setVectorFloat3("spotLights[1].direction", glm::value_ptr(dirLambo));
+		shaderMulLighting.setFloat("spotLights[1].constant", 1.0);
+		shaderMulLighting.setFloat("spotLights[1].linear", 0.02);
+		shaderMulLighting.setFloat("spotLights[1].quadratic", 0.01);
+		shaderMulLighting.setFloat("spotLights[1].cutOff", cos(glm::radians(12.5f)));
+		shaderMulLighting.setFloat("spotLights[1].outerCutOff", cos(glm::radians(15.0f)));
+
+		shaderTerrain.setInt("spotLightCount", 2);
+		shaderTerrain.setVectorFloat3("spotLights[1].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.1)));
+		shaderTerrain.setVectorFloat3("spotLights[1].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.2)));
+		shaderTerrain.setVectorFloat3("spotLights[1].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
+		shaderTerrain.setVectorFloat3("spotLights[1].position", glm::value_ptr(spotPosition));
+		shaderTerrain.setVectorFloat3("spotLights[1].direction", glm::value_ptr(dirLambo));
+		shaderTerrain.setFloat("spotLights[1].constant", 1.0);
+		shaderTerrain.setFloat("spotLights[1].linear", 0.02);
+		shaderTerrain.setFloat("spotLights[1].quadratic", 0.01);
+		shaderTerrain.setFloat("spotLights[1].cutOff", cos(glm::radians(12.5f)));
+		shaderTerrain.setFloat("spotLights[1].outerCutOff", cos(glm::radians(15.0f)));
+
+
 		/*******************************************
 		 * Propiedades PointLights
 		 *******************************************/
@@ -1313,20 +1361,173 @@ void applicationLoop() {
 		 * State machines
 		 *******************************************/
 
-		// State machine for the lambo car
-		switch(stateDoor){
+		 //Lambo
+		switch (stateLambo) {
+
+			//Caso de selección
 		case 0:
-			dorRotCount += 0.5;
-			if(dorRotCount > 75)
-				stateDoor = 1;
-			break;
-		case 1:
-			dorRotCount -= 0.5;
-			if(dorRotCount < 0){
-				dorRotCount = 0.0;
-				stateDoor = 0;
+
+			if (stateAvanceLambo == 0)
+				maxAdvanceLambo = 10.0f;
+			else if (stateAvanceLambo == 1) {
+				maxAdvanceLambo = 47.0f;
 			}
+			else if (stateAvanceLambo == 2) {
+				maxAdvanceLambo = 42.5f;
+			}
+			else if (stateAvanceLambo == 3) {
+				maxAdvanceLambo = 47.0f;
+			}
+			else if (stateAvanceLambo == 4) {
+				maxAdvanceLambo = 42.5f;
+			}
+
+			stateLambo = 1;
+
 			break;
+
+			//Caso de movimiento
+		case 1:
+
+			rotWheelsYLambo = 0.00f;
+			rotWheelsXLambo += 10.0f;
+
+			modelMatrixLambo = glm::translate(modelMatrixLambo, glm::vec3(0.0f, 0.0f, 0.10f));
+			avanceCountLambo += 0.10f;
+
+			if (avanceCountLambo > maxAdvanceLambo) {
+				avanceCountLambo = 0;
+				stateAvanceLambo += 1;
+				stateLambo = 2;
+			}
+
+			break;
+
+			//Coche gira
+		case 2:
+
+			modelMatrixLambo = glm::translate(modelMatrixLambo, glm::vec3(0.0f, 0.0f, 0.025f));
+			modelMatrixLambo = glm::rotate(modelMatrixLambo, glm::radians(-0.5f), glm::vec3(0.0f, 1.0f, 0.0f));
+			
+			dirLambo = glm::vec3(5.0f * sin(glm::radians(alfaRot)), -0.5f, 5.0f * cos(glm::radians(alfaRot)));
+
+			if (rotWheelsYLambo < 5.0f) {//en grados
+				rotWheelsYLambo += 0.1f;
+			}
+
+			alfaRot -= 0.5f;
+
+			rotWheelsXLambo += 5.0f;
+
+			rotCountLambo += 0.5f;
+			if (rotCountLambo >= 90) {
+				rotCountLambo = 0;
+				stateLambo = 0;
+
+				rotWheelsYLambo = 0.0f;
+				rotWheelsXLambo += 10.0f;
+
+				if (stateAvanceLambo > 4) {
+					stateAvanceLambo = 1;
+					stateLambo = 3;
+					alfaRot = 0.0f;
+				}
+			}
+
+			break;
+
+			//Puerta abre
+		case 3:
+			//std::printf("Abriendo");
+			dorRotCountLambo += 0.5f;
+
+			if (dorRotCountLambo > 75.0f) {
+				stateLambo = 4;
+			}
+
+			break;
+
+			//Puerta cierra
+		case 4:
+			//std::printf("Cerrando\n");
+			dorRotCountLambo -= 0.5f;
+
+			if (dorRotCountLambo < 0.0f) {
+				dorRotCountLambo = 0.0f;
+				stateLambo = 0;
+			}
+
+			break;
+
+		default:
+			break;
+		}
+
+		//Helicóptero
+		switch (estadoHeli) {
+			//Vuelo normal
+		case 0:
+
+			if (true)
+				estadoHeli = 1;
+
+			rotHelHelY += velRotHelHelY;
+			rotHeliTra += velRotHelHelTra;
+
+			break;
+
+			//Descenso
+		case 1:
+
+			//Sabemos que el helicóptero empieza volando a 10.0 del piso
+			//velRotHelHelY -= 0.1f;
+			//velRotHelHelTra -= 0.1f;
+
+			desplHeli = -0.01;
+			acumDesplHeli += desplHeli;
+
+			rotHelHelY += velRotHelHelY;
+			rotHeliTra += velRotHelHelTra;
+
+			if (acumDesplHeli < (-10.0f + 0.05f))
+				estadoHeli = 2;
+
+			break;
+
+			//Paro de motor
+		case 2:
+
+			desplHeli = 0.0;
+
+			//Hay que bajar la velocidad de las aspas
+			velRotHelHelY -= 0.1;
+			velRotHelHelTra -= 0.1;
+
+			rotHelHelY += velRotHelHelY;
+			rotHeliTra += velRotHelHelTra;
+
+			if (velRotHelHelTra < 0.0f) {
+				velRotHelHelTra = 0.0f;
+			}
+
+			if (velRotHelHelY < 0.0f) {
+				velRotHelHelY = 0.0f;
+			}
+
+			if (velRotHelHelTra == 0.0f && velRotHelHelY == 0.0f) {
+				estadoHeli = 3;
+			}
+
+			break;
+
+		case 3:
+
+			acumDesplHeli = 0;
+			velRotHelHelTra = 0;
+			velRotHelHelY = 0;
+
+			break;
+
 		}
 
 		glfwSwapBuffers(window);
