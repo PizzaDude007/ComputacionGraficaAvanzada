@@ -508,7 +508,9 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureLandingPad.freeImage(bitmap);
 
 	// Definiendo la textura a utilizar
-	Texture textureTerrainBackground("../Textures/grassy2.png");
+	//Texture textureTerrainBackground("../Textures/grassy2.png"); Texture textureTerrainBackground("../Textures/terreno/coast_sand_rocks_02_4k.blend/texture/coast_sand_rocks_02_diff_4k.jpg");
+	//Texture textureTerrainBackground("../Textures/terreno/terreno.png");
+	Texture textureTerrainBackground("../Textures/terreno/nieve.png");
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	bitmap = textureTerrainBackground.loadImage();
 	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
@@ -540,7 +542,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureTerrainBackground.freeImage(bitmap);
 
 	// Definiendo la textura a utilizar
-	Texture textureTerrainR("../Textures/mud.png");
+	//Texture textureTerrainR("../Textures/mud.png"); Texture textureTerrainR("../Textures/terreno/rocky_trail_4k.blend/textures/rocky_trail_diff_4k.jpg");
+	Texture textureTerrainR("../Textures/terreno/tierra.png");
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	bitmap = textureTerrainR.loadImage();
 	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
@@ -572,7 +575,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureTerrainR.freeImage(bitmap);
 
 	// Definiendo la textura a utilizar
-	Texture textureTerrainG("../Textures/grassFlowers.png");
+	//Texture textureTerrainG("../Textures/grassFlowers.png");
+	Texture textureTerrainG("../Textures/terreno/flores.png");
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	bitmap = textureTerrainG.loadImage();
 	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
@@ -604,7 +608,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureTerrainG.freeImage(bitmap);
 
 	// Definiendo la textura a utilizar
-	Texture textureTerrainB("../Textures/path.png");
+	//Texture textureTerrainB("../Textures/path.png"); Texture textureTerrainB("../terreno/blue_floor_tiles_01_4k.blend/textures/blue_floor_tiles_01_diff_4k.jpg");
+	Texture textureTerrainB("../Textures/terreno/camino.png");
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	bitmap = textureTerrainB.loadImage();
 	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
