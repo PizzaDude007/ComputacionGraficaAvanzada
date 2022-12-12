@@ -1718,25 +1718,51 @@ void applicationLoop() {
 			addOrUpdateColliders(collidersOBB, "lamp2-" + std::to_string(i), lamp2Collider, modelMatrixColliderLamp);
 		}
 
+		float multiplicador = 0.00001f;
+
 		for (std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
 			collidersSBB.begin(); it != collidersSBB.end(); it++) {
 			float t = 0;
-			if (raySphereIntersect(origenRayo, targetRayo, rayDirection, std::get<0>(it->second), t))
+			if (raySphereIntersect(origenRayo, targetRayo, rayDirection, std::get<0>(it->second), t)) {
 				std::cout << "Hay colision el rayo de May con: " << it->first << std::endl;
-			if (raySphereIntersect(origenRayoGolem, targetRayoGolem, rayDirectionGolem, std::get<0>(it->second), t))
+				if (it->first._Equal("sunshine")) {
+					m4Sunshine = glm::translate(m4Sunshine, glm::vec3(std::rand() * multiplicador, 0.0f, std::rand() * multiplicador));
+				}
+			}
+			if (raySphereIntersect(origenRayoGolem, targetRayoGolem, rayDirectionGolem, std::get<0>(it->second), t)) {
 				std::cout << "Hay colision el rayo de Golem con: " << it->first << std::endl;
-			if (raySphereIntersect(origenRayoAmongUs, targetRayoAmongUs, rayDirectionAmongUs, std::get<0>(it->second), t))
+				if (it->first._Equal("sunshine")) {
+					m4Sunshine = glm::translate(m4Sunshine, glm::vec3(std::rand() * multiplicador, 0.0f, std::rand() * multiplicador));
+				}
+			}
+			if (raySphereIntersect(origenRayoAmongUs, targetRayoAmongUs, rayDirectionAmongUs, std::get<0>(it->second), t)) {
 				std::cout << "Hay colision el rayo de AmongUs con: " << it->first << std::endl;
+				if (it->first._Equal("sunshine")) {
+					m4Sunshine = glm::translate(m4Sunshine, glm::vec3(std::rand() * multiplicador, 0.0f, std::rand() * multiplicador));
+				}
+			}
 		}
 
 		for (std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator it =
 			collidersOBB.begin(); it != collidersOBB.end(); it++) {
-			if (rayOBBIntersect(origenRayo, targetRayo, std::get<0>(it->second)))
+			if (rayOBBIntersect(origenRayo, targetRayo, std::get<0>(it->second))) {
 				std::cout << "Hay colision con el rayo de Maycon: " << it->first << std::endl;
-			if (rayOBBIntersect(origenRayoGolem, targetRayoGolem, std::get<0>(it->second)))
+				if (it->first._Equal("grassblock")) {
+					m4GrassBlock = glm::translate(m4GrassBlock, glm::vec3(std::rand() * multiplicador, 0.0f, std::rand() * multiplicador));
+				}
+			}
+			if (rayOBBIntersect(origenRayoGolem, targetRayoGolem, std::get<0>(it->second))) {
 				std::cout << "Hay colision con el rayo de Golem con: " << it->first << std::endl;
-			if (rayOBBIntersect(origenRayoAmongUs, targetRayoAmongUs, std::get<0>(it->second)))
+				if (it->first._Equal("grassblock")) {
+					m4GrassBlock = glm::translate(m4GrassBlock, glm::vec3(std::rand() * multiplicador, 0.0f, std::rand() * multiplicador));
+				}
+			}
+			if (rayOBBIntersect(origenRayoAmongUs, targetRayoAmongUs, std::get<0>(it->second))) {
 				std::cout << "Hay colision con el rayo de AmongUs con: " << it->first << std::endl;
+				if (it->first._Equal("grassblock")) {
+					m4GrassBlock = glm::translate(m4GrassBlock, glm::vec3(std::rand() * multiplicador, 0.0f, std::rand() * multiplicador));
+				}
+			}
 		}
 
 		//colision entre esferas (SBB)
