@@ -42,6 +42,9 @@
 // Include Colision headers functions
 #include "Headers/Colisiones.h"
 
+// Include de TextRendering
+#include "Headers/FontTypeRendering.h"
+
 #define ARRAY_SIZE_IN_ELEMENTS(a) (sizeof(a)/sizeof(a[0]))
 
 int screenWidth;
@@ -93,12 +96,24 @@ Model modelLampPost2;
 // Model animate instance
 // Mayow
 Model mayowModelAnimate;
+//Grass
+Model grassModel;
+
 // Terrain model instance
 Terrain terrain(-1, -1, 200, 8, "../Textures/heightmap.png");
+
+//Textrendering
+FontTypeRendering::FontTypeRendering * textRender;
 
 GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint textureTerrainBackgroundID, textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID;
+
+std::map < std::string, glm::vec3> objetosTransDesordenados = {
+	{"lambo", glm::vec3(0.0f)},
+	{"heli", glm::vec3(0.0f)},
+	{"aircraft", glm::vec3(0.0f)},
+};
 
 GLenum types[6] = {
 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -327,9 +342,16 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
 	mayowModelAnimate.setShader(&shaderMulLighting);
 
+	//Grass
+	grassModel.loadModel("../models/grass/grassModel.obj");
+	grassModel.setShader(&shaderMulLighting);
+
 	camera->setPosition(glm::vec3(0.0, 0.0, 10.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
 	camera->setSensitivity(1.0);
+
+	textRender = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
+	textRender->Initialize();
 
 	// Definimos el tamanio de la imagen
 	int imageWidth, imageHeight;
@@ -725,6 +747,7 @@ void destroy() {
 	modelLamp1.destroy();
 	modelLamp2.destroy();
 	modelLampPost2.destroy();
+	grassModel.destroy();
 
 	// Custom objects animate
 	mayowModelAnimate.destroy();
@@ -1148,11 +1171,11 @@ void applicationLoop() {
 		glActiveTexture(GL_TEXTURE0);
 
 		// Render for the aircraft model
-		modelMatrixAircraft[3][1] = terrain.getHeightTerrain(modelMatrixAircraft[3][0], modelMatrixAircraft[3][2]) + 2.0;
-		modelAircraft.render(modelMatrixAircraft);
+		/*modelMatrixAircraft[3][1] = terrain.getHeightTerrain(modelMatrixAircraft[3][0], modelMatrixAircraft[3][2]) + 2.0;
+		modelAircraft.render(modelMatrixAircraft);*/
 
 		// Lambo car
-		glDisable(GL_CULL_FACE);
+		/*glDisable(GL_CULL_FACE);
 		glm::mat4 modelMatrixLamboChasis = glm::mat4(modelMatrixLambo);
 		modelMatrixLamboChasis[3][1] = terrain.getHeightTerrain(modelMatrixLamboChasis[3][0], modelMatrixLamboChasis[3][2]);
 		modelMatrixLamboChasis = glm::scale(modelMatrixLamboChasis, glm::vec3(1.3, 1.3, 1.3));
@@ -1167,19 +1190,19 @@ void applicationLoop() {
 		modelLamboFrontLeftWheel.render(modelMatrixLamboChasis);
 		modelLamboFrontRightWheel.render(modelMatrixLamboChasis);
 		modelLamboRearLeftWheel.render(modelMatrixLamboChasis);
-		modelLamboRearRightWheel.render(modelMatrixLamboChasis);
+		modelLamboRearRightWheel.render(modelMatrixLamboChasis);*/
 		// Se regresa el cull faces IMPORTANTE para las puertas
-		glEnable(GL_CULL_FACE);
+		//glEnable(GL_CULL_FACE);
 
-		// Helicopter
-		glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli);
-		modelHeliChasis.render(modelMatrixHeliChasis);
+		//// Helicopter
+		//glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli);
+		//modelHeliChasis.render(modelMatrixHeliChasis);
 
-		glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis);
-		modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, -0.249548));
-		modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
-		modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
-		modelHeliHeli.render(modelMatrixHeliHeli);
+		//glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis);
+		//modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, -0.249548));
+		//modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
+		//modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
+		//modelHeliHeli.render(modelMatrixHeliHeli);
 
 		// Render the lamps
 		for (int i = 0; i < lamp1Position.size(); i++){
@@ -1269,6 +1292,14 @@ void applicationLoop() {
 		mayowModelAnimate.setAnimationIndex(animationIndex);
 		mayowModelAnimate.render(modelMatrixMayowBody);
 
+		// Render Grass
+		glDisable(GL_CULL_FACE);
+		glm::vec3 grassPosition = glm::vec3(0.0);
+		grassPosition.y = terrain.getHeightTerrain(grassPosition.x, grassPosition.z);
+		grassModel.setPosition(grassPosition);
+		grassModel.render();
+		glEnable(GL_CULL_FACE);
+
 		/*******************************************
 		 * Skybox
 		 *******************************************/
@@ -1285,6 +1316,58 @@ void applicationLoop() {
 		glCullFace(oldCullFaceMode);
 		glDepthFunc(oldDepthFuncMode);
 
+		objetosTransDesordenados.find("lambo")->second = glm::vec3(modelMatrixLambo[3]);
+		objetosTransDesordenados.find("heli")->second = glm::vec3(modelMatrixHeli[3]);
+		objetosTransDesordenados.find("aircraft")->second = glm::vec3(modelMatrixAircraft[3]);
+
+		std::map<std::string, glm::vec3>::iterator itBlendDes;
+		std::map<float, std::pair<std::string, glm::vec3>> blendOrdenado;
+		for (itBlendDes = objetosTransDesordenados.begin(); itBlendDes != objetosTransDesordenados.end(); itBlendDes++) {
+			float dist = glm::length(camera->getPosition() - itBlendDes->second);
+			blendOrdenado[dist] = std::make_pair(itBlendDes->first, itBlendDes->second);
+		}
+
+		std::map<float, std::pair<std::string, glm::vec3>>::reverse_iterator itOr;
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		for (itOr = blendOrdenado.rbegin(); itOr != blendOrdenado.rend(); itOr++) {
+			if (itOr->second.first.compare("lambo") == 0) {
+				glDisable(GL_CULL_FACE);
+				glm::mat4 modelMatrixLamboChasis = glm::mat4(modelMatrixLambo);
+				modelMatrixLamboChasis[3][1] = terrain.getHeightTerrain(modelMatrixLamboChasis[3][0], modelMatrixLamboChasis[3][2]);
+				modelMatrixLamboChasis = glm::scale(modelMatrixLamboChasis, glm::vec3(1.3, 1.3, 1.3));
+				modelLambo.render(modelMatrixLamboChasis);
+				glActiveTexture(GL_TEXTURE0);
+				glm::mat4 modelMatrixLamboLeftDor = glm::mat4(modelMatrixLamboChasis);
+				modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(1.08676, 0.707316, 0.982601));
+				modelMatrixLamboLeftDor = glm::rotate(modelMatrixLamboLeftDor, glm::radians(dorRotCount), glm::vec3(1.0, 0, 0));
+				modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(-1.08676, -0.707316, -0.982601));
+				modelLamboLeftDor.render(modelMatrixLamboLeftDor);
+				modelLamboRightDor.render(modelMatrixLamboChasis);
+				modelLamboFrontLeftWheel.render(modelMatrixLamboChasis);
+				modelLamboFrontRightWheel.render(modelMatrixLamboChasis);
+				modelLamboRearLeftWheel.render(modelMatrixLamboChasis);
+				modelLamboRearRightWheel.render(modelMatrixLamboChasis);				
+				glEnable(GL_CULL_FACE);
+			}
+			else if (itOr->second.first.compare("heli") == 0) {
+
+				// Helicopter
+				glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli);
+				modelHeliChasis.render(modelMatrixHeliChasis);
+
+				glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis);
+				modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, -0.249548));
+				modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
+				modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
+				modelHeliHeli.render(modelMatrixHeliHeli);
+			}
+			else if (itOr->second.first.compare("aircraft") == 0) {
+				modelMatrixAircraft[3][1] = terrain.getHeightTerrain(modelMatrixAircraft[3][0], modelMatrixAircraft[3][2]) + 2.0;
+				modelAircraft.render(modelMatrixAircraft);
+			}
+		}
+		glDisable(GL_BLEND);
 
 		/*******************************************
 		 * Creacion de colliders
@@ -1561,6 +1644,10 @@ void applicationLoop() {
 				indexFrameDartNext = 0;
 			modelMatrixDart = interpolate(keyFramesDart, indexFrameDart, indexFrameDartNext, 0, interpolationDart);
 		}
+
+		glEnable(GL_BLEND);
+		textRender->render("Hola mundo con texto", -0.5, 0, 18.0, 0.0, 0.0, 1.0);
+		glDisable(GL_BLEND);
 
 		// Constantes de animaciones
 		rotHelHelY += 0.5;

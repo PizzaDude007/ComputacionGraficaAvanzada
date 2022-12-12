@@ -91,6 +91,12 @@ void Model::loadModel(const std::string & path) {
 					+ pow(this->aabb.mins.y - this->aabb.maxs.y, 2)
 					+ pow(this->aabb.mins.z - this->aabb.maxs.z, 2)) / 2.0f;
 
+	float minx = this->aabb.maxs.x - this->aabb.mins.x;
+	float miny = this->aabb.maxs.y - this->aabb.mins.y;
+	float minz = this->aabb.maxs.z - this->aabb.mins.z;
+	float ratio = glm::max(minx, miny);
+	ratio = glm::max(ratio, minz);
+	this->sbb.ratio = ratio / 2.0f;
 
 	// Se crea la obb
 	this->obb.c = this->sbb.c;

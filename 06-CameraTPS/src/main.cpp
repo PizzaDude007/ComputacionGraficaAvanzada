@@ -54,8 +54,9 @@ Shader shaderMulLighting;
 //Shader para el terreno
 Shader shaderTerrain;
 
+//std::shared_ptr<FirstPersonCamera> cameraFP(new FirstPersonCamera());
+std::shared_ptr<Camera>  camera(new ThirdPersonCamera());
 //std::shared_ptr<FirstPersonCamera> camera(new FirstPersonCamera());
-std::shared_ptr<Camera> camera(new ThirdPersonCamera());
 float distanceFromPlayer = 7.0;
 
 Sphere skyboxSphere(20, 20);
@@ -89,6 +90,11 @@ Model modelLampPost2;
 // Model animate instance
 // Mayow
 Model mayowModelAnimate;
+
+// New Models
+Model mGolem;
+Model mAmongUs;
+
 // Terrain model instance
 Terrain terrain(-1, -1, 200, 8, "../Textures/heightmap.png");
 
@@ -123,15 +129,27 @@ glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixDart = glm::mat4(1.0f);
 glm::mat4 modelMatrixMayow = glm::mat4(1.0f);
 
+// New models
+glm::mat4 m4Golem = glm::mat4(1.0f);
+glm::mat4 m4AmongUs = glm::mat4(1.0f);
+
 float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
 int modelSelected = 2;
+bool cameraSelected = true; //verdadero = primera persona, falso = tercera persona
 bool enableCountSelected = true;
+bool enableCameraSelected = true;
 
 // Variables to animations keyframes
 bool saveFrame = false, availableSave = true;
 std::ofstream myfile;
 std::string fileName = "";
 bool record = false;
+
+// Índices para la animación
+int iAnimGolem = 1;
+int iAnimMay = 1;
+int iAnimAmongUs = 1;
+int iAnimVampire = 1;
 
 // Joints interpolations Dart Lego
 std::vector<std::vector<float>> keyFramesDartJoints;
@@ -304,10 +322,25 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
 	mayowModelAnimate.setShader(&shaderMulLighting);
 
+	//Golem
+	mGolem.loadModel("../models/golem/golem1.fbx");
+	mGolem.setShader(&shaderMulLighting);
+
+	//AmongUs
+	mAmongUs.loadModel("../models/download/AmongUs/amongus_anim.fbx");
+	mAmongUs.setShader(&shaderMulLighting);
+
 	// No tiene sentido o configurar una posición
 	camera->setPosition(glm::vec3(0.0, 0.0, 10.0));
 	camera->setDistanceFromTarget(distanceFromPlayer);
 	camera->setSensitivity(1.0);
+	//cameraFP->setPosition(glm::vec3(0.0, 0.0, 10.0));
+	//cameraFP->setDistanceFromTarget(distanceFromPlayer);
+	//cameraFP->setSensitivity(1.0);
+
+	//cameraTP->setPosition(glm::vec3(0.0, 0.0, 10.0));
+	//cameraTP->setDistanceFromTarget(distanceFromPlayer);
+	//cameraTP->setSensitivity(1.0);
 
 	// Definimos el tamanio de la imagen
 	int imageWidth, imageHeight;
@@ -705,6 +738,9 @@ void destroy() {
 	// Custom objects animate
 	mayowModelAnimate.destroy();
 
+	mGolem.destroy();
+	mAmongUs.destroy();
+
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDeleteTextures(1, &textureCespedID);
@@ -774,38 +810,116 @@ bool processInput(bool continueApplication) {
 		return false;
 	}
 
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
-		camera->mouseMoveCamera(offsetX, 0, deltaTime);
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT))
-		camera->mouseMoveCamera(0, offsetY, deltaTime);
+	if (enableCameraSelected && (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS)) {
+		enableCameraSelected = false;
+		if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+			cameraSelected = !cameraSelected;
+	}
+	else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_RELEASE)
+		enableCameraSelected = true;
 
-	/*if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera->moveFrontCamera(true, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera->moveFrontCamera(false, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera->moveRightCamera(false, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera->moveRightCamera(true, deltaTime);
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		camera->mouseMoveCamera(offsetX, offsetY, deltaTime);*/
+	if (cameraSelected) {
+		//camera = cameraTP;
+
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
+			camera->mouseMoveCamera(offsetX, 0, deltaTime);
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT))
+			camera->mouseMoveCamera(0, offsetY, deltaTime);
+	}
+	else {
+		//camera = cameraFP;
+
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			camera->moveFrontCamera(true, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			camera->moveFrontCamera(false, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			camera->moveRightCamera(false, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			camera->moveRightCamera(true, deltaTime);
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			camera->mouseMoveCamera(offsetX, offsetY, deltaTime);
+	}
+
 	offsetX = 0;
 	offsetY = 0;
 
 	// Seleccionar modelo
-	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS){
+	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
 		enableCountSelected = false;
 		modelSelected++;
-		if(modelSelected > 2)
+		if (modelSelected > 2)
 			modelSelected = 0;
-		if(modelSelected == 1)
-			fileName = "../animaciones/animation_dart_joints.txt";
+		if (modelSelected == 0)
+			fileName = "May";
+		if (modelSelected == 1)
+			fileName = "golem";
 		if (modelSelected == 2)
-			fileName = "../animaciones/animation_dart.txt";
+			fileName = "AmongUs";
 		std::cout << "modelSelected:" << modelSelected << std::endl;
 	}
 	else if(glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
 		enableCountSelected = true;
+
+	// Mayow
+	iAnimMay = 1;
+
+	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimMay = 0;
+	}
+	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimMay = 0;
+	}
+	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		modelMatrixMayow = glm::rotate(modelMatrixMayow, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimMay = 0;
+	}
+	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		modelMatrixMayow = glm::rotate(modelMatrixMayow, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimMay = 0;
+	}
+
+	//Golem
+	iAnimGolem = 1;
+
+	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4Golem = glm::translate(m4Golem, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimGolem = 0;
+	}
+	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4Golem = glm::translate(m4Golem, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimGolem = 0;
+	}
+	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4Golem = glm::rotate(m4Golem, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimGolem = 0;
+	}
+	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4Golem = glm::rotate(m4Golem, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimGolem = 0;
+	}
+
+	// Among Us
+	iAnimAmongUs = 1;
+
+	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		m4AmongUs = glm::translate(m4AmongUs, glm::vec3(0.0f, 0.0f, 0.02f));
+		iAnimAmongUs = 0;
+	}
+	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		m4AmongUs = glm::translate(m4AmongUs, glm::vec3(0.0f, 0.0f, -0.02f));
+		iAnimAmongUs = 0;
+	}
+	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		m4AmongUs = glm::rotate(m4AmongUs, 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimAmongUs = 0;
+	}
+	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		m4AmongUs = glm::rotate(m4AmongUs, -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+		iAnimAmongUs = 0;
+	}
 
 	// Guardar key frames
 	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
@@ -831,7 +945,7 @@ bool processInput(bool continueApplication) {
 		availableSave = true;
 
 	// Dart Lego model movements
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
+	/*if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
 			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 		rotDartHead += 0.02;
 	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
@@ -880,10 +994,10 @@ bool processInput(bool continueApplication) {
 	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(-0.02, 0.0, 0.0));
 	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));
+		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));*/
 
 	// Mayow animate model movements
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
+	/*if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
 		modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(1.0f), glm::vec3(0, 1, 0));
 	}else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
 		modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-1.0f), glm::vec3(0, 1, 0));
@@ -891,7 +1005,7 @@ bool processInput(bool continueApplication) {
 		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0, 0, 0.02));
 	}else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
 		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0, 0, -0.02));
-	}
+	}*/
 
 	glfwPollEvents();
 	return continueApplication;
@@ -945,15 +1059,21 @@ void applicationLoop() {
 				(float) screenWidth / (float) screenHeight, 0.01f, 100.0f);
 		glm::mat4 view = camera->getViewMatrix();
 
-		if (modelSelected == 1) {
-			axisTarget = glm::axis(glm::quat_cast(modelMatrixDart));
-			angleTarget = glm::angle(glm::quat_cast(modelMatrixDart));
-			target = glm::vec3(modelMatrixDart[3]);
-		}
-		else {
-			axisTarget = glm::axis(glm::quat_cast(modelMatrixMayow));
-			angleTarget = glm::angle(glm::quat_cast(modelMatrixMayow));
-			target = glm::vec3(modelMatrixMayow[3]);
+		if (cameraSelected) {
+			if (modelSelected == 1) {
+				axisTarget = glm::axis(glm::quat_cast(m4Golem));
+				angleTarget = glm::angle(glm::quat_cast(m4Golem));
+				target = glm::vec3(m4Golem[3]);
+			}if (modelSelected == 2) {
+				axisTarget = glm::axis(glm::quat_cast(m4AmongUs));
+				angleTarget = glm::angle(glm::quat_cast(m4AmongUs));
+				target = glm::vec3(m4AmongUs[3]);
+			}
+			else {
+				axisTarget = glm::axis(glm::quat_cast(modelMatrixMayow));
+				angleTarget = glm::angle(glm::quat_cast(modelMatrixMayow));
+				target = glm::vec3(modelMatrixMayow[3]);
+			}
 		}
 
 		if (std::isnan(angleTarget))
@@ -1222,10 +1342,63 @@ void applicationLoop() {
 		/*******************************************
 		 * Custom Anim objects obj
 		 *******************************************/
+		/*modelMatrixMayow[3][1] = terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
+		glm::mat4 modelMatrixMayowBody = glm::mat4(modelMatrixMayow);
+		modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
+		mayowModelAnimate.render(modelMatrixMayowBody);*/
+
+		//terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
+		glm::vec3 ejeyMayow = glm::normalize(terrain.getNormalTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]));
+		glm::vec3 ejexMayow = glm::normalize(glm::vec3(modelMatrixMayow[0]));
+		glm::vec3 ejezMayow = glm::normalize(glm::cross(ejexMayow, ejeyMayow));
+		ejexMayow = glm::normalize(glm::cross(ejeyMayow, ejezMayow));
+
+		modelMatrixMayow[0] = glm::vec4(ejexMayow, 0.0f);
+		modelMatrixMayow[1] = glm::vec4(ejeyMayow, 0.0f);
+		modelMatrixMayow[2] = glm::vec4(ejezMayow, 0.0f);
+
 		modelMatrixMayow[3][1] = terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
 		glm::mat4 modelMatrixMayowBody = glm::mat4(modelMatrixMayow);
 		modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
+		mayowModelAnimate.setAnimationIndex(iAnimMay);
 		mayowModelAnimate.render(modelMatrixMayowBody);
+
+		//golem
+		glm::vec3 ejeyGolem = glm::normalize(terrain.getNormalTerrain(m4Golem[3][0], m4Golem[3][2]));
+		glm::vec3 ejexGolem = glm::normalize(glm::vec3(m4Golem[0]));
+		glm::vec3 ejezGolem = glm::normalize(glm::cross(ejexGolem, ejeyGolem));
+		ejexGolem = glm::normalize(glm::cross(ejeyGolem, ejezGolem));
+
+		m4Golem[0] = glm::vec4(ejexGolem, 0.0f);
+		m4Golem[1] = glm::vec4(ejeyGolem, 0.0f);
+		m4Golem[2] = glm::vec4(ejezGolem, 0.0f);
+
+		m4Golem[3][1] = terrain.getHeightTerrain(m4Golem[3][0], m4Golem[3][2]);
+
+		glm::mat4 m4GolemCorp = m4Golem;
+		m4GolemCorp = glm::scale(m4GolemCorp, glm::vec3(0.005f, 0.005f, 0.005f));
+		//m4GolemCorp = glm::translate(m4GolemCorp, vecMovGolem);
+		mGolem.setAnimationIndex(iAnimGolem);
+		mGolem.render(m4GolemCorp);
+
+		//AmongUs
+		glm::vec3 ejeyAmongUs = glm::normalize(terrain.getNormalTerrain(m4AmongUs[3][0], m4AmongUs[3][2]));
+		glm::vec3 ejexAmongUs = glm::normalize(glm::vec3(m4AmongUs[0]));
+		glm::vec3 ejezAmongUs = glm::normalize(glm::cross(ejexAmongUs, ejeyAmongUs));
+		ejexAmongUs = glm::normalize(glm::cross(ejeyAmongUs, ejezAmongUs));
+
+		m4AmongUs[0] = glm::vec4(ejexAmongUs, 0.0f);
+		m4AmongUs[1] = glm::vec4(ejeyAmongUs, 0.0f);
+		m4AmongUs[2] = glm::vec4(ejezAmongUs, 0.0f);
+
+		m4AmongUs[3][1] = terrain.getHeightTerrain(m4AmongUs[3][0], m4AmongUs[3][2]);
+
+		glm::mat4 m4AmongUsCorp = m4AmongUs;
+		//m4AmongUsCorp = glm::translate(m4AmongUsCorp, vecMovAmongUs);
+		m4AmongUsCorp = glm::scale(m4AmongUsCorp, glm::vec3(0.01f, 0.01f, 0.01f));
+		mAmongUs.setAnimationIndex(iAnimAmongUs);
+		mAmongUs.render(m4AmongUsCorp);
+
 
 		/*******************************************
 		 * Skybox
