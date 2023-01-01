@@ -1666,7 +1666,7 @@ void applicationLoop() {
 		mayowCollider.e = mayowModelAnimate.getObb().e * 0.021f * 0.75f;
 		addOrUpdateColliders(collidersOBB, "mayow", mayowCollider, modelMatrixMayow);
 
-		//// Golem Collider
+		// Golem Collider
 		AbstractModel::OBB golemCollider;
 		glm::mat4 m4GolemCollider = glm::mat4(m4Golem);
 		//m4GolemCollider = glm::rotate(m4GolemCollider, glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
