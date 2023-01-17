@@ -116,6 +116,10 @@ Model modelFountain;
 // Model animate instance
 // Mayow
 Model mayowModelAnimate;
+
+// Arquero
+Model arqueroModel;
+
 // Terrain model instance
 Terrain terrain(-1, -1, 200, 16, "../Textures/heightmap.png");
 
@@ -132,12 +136,12 @@ GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
 
-std::string fileNames[6] = { "../Textures/mp_bloodvalley/blood-valley_ft.tga",
-		"../Textures/mp_bloodvalley/blood-valley_bk.tga",
-		"../Textures/mp_bloodvalley/blood-valley_up.tga",
-		"../Textures/mp_bloodvalley/blood-valley_dn.tga",
-		"../Textures/mp_bloodvalley/blood-valley_rt.tga",
-		"../Textures/mp_bloodvalley/blood-valley_lf.tga" };
+std::string fileNames[6] = { "../Textures/SkyBoxToon/Sunset_1/px.png",
+		"../Textures/SkyBoxToon/Sunset_1/nx.png",
+		"../Textures/SkyBoxToon/Sunset_1/py.png",
+		"../Textures/SkyBoxToon/Sunset_1/ny.png",
+		"../Textures/SkyBoxToon/Sunset_1/pz.png",
+		"../Textures/SkyBoxToon/Sunset_1/nz.png" };
 
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
@@ -151,6 +155,8 @@ glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixDart = glm::mat4(1.0f);
 glm::mat4 modelMatrixMayow = glm::mat4(1.0f);
 glm::mat4 modelMatrixFountain = glm::mat4(1.0f);
+
+glm::mat4 modelMatrixArquero = glm::mat4(1.0f);
 
 int animationIndex = 1;
 float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
@@ -587,6 +593,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	//Mayow
 	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
 	mayowModelAnimate.setShader(&shaderMulLighting);
+
+	//Arquero
+	arqueroModel.loadModel("../models/download/arquero/arquero.fbx");
+	arqueroModel.setShader(&shaderMulLighting);
 
 	camera->setPosition(glm::vec3(0.0, 0.0, 10.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
@@ -1168,6 +1178,7 @@ void destroy() {
 
 	// Custom objects animate
 	mayowModelAnimate.destroy();
+	arqueroModel.destroy();
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -1399,6 +1410,9 @@ void applicationLoop() {
 
 	modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(13.0f, 0.05f, -5.0f));
 	modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-90.0f), glm::vec3(0, 1, 0));
+
+	modelMatrixArquero = glm::translate(modelMatrixArquero, glm::vec3(0.0f, 0.0f, -5.0f));
+	modelMatrixArquero = glm::scale(modelMatrixArquero, glm::vec3(0.02f, 0.02f, 0.02f));
 
 	modelMatrixFountain = glm::translate(modelMatrixFountain, glm::vec3(5.0, 0.0, -40.0));
 	modelMatrixFountain[3][1] = terrain.getHeightTerrain(modelMatrixFountain[3][0] , modelMatrixFountain[3][2]) + 0.2;
@@ -1768,6 +1782,22 @@ void applicationLoop() {
 		mayowCollider.c = glm::vec3(modelmatrixColliderMayow[3]);
 		addOrUpdateColliders(collidersOBB, "mayow", mayowCollider, modelMatrixMayow);
 
+		// Collider de Arquero
+		AbstractModel::OBB arqueroCollider;
+		glm::mat4 modelmatrixColliderArquero = glm::mat4(modelMatrixArquero);
+		modelmatrixColliderArquero = glm::rotate(modelmatrixColliderArquero,
+			glm::radians(-90.0f), glm::vec3(1, 0, 0));
+		// Set the orientation of collider before doing the scale
+		arqueroCollider.u = glm::quat_cast(modelmatrixColliderArquero);
+		modelmatrixColliderArquero = glm::scale(modelmatrixColliderArquero, glm::vec3(1.0f, 1.0f, 1.0f));
+		modelmatrixColliderArquero = glm::translate(modelmatrixColliderArquero,
+			glm::vec3(arqueroModel.getObb().c.x,
+				arqueroModel.getObb().c.y,
+				arqueroModel.getObb().c.z));
+		arqueroCollider.e = arqueroModel.getObb().e * glm::vec3(1.0f, 1.0f, 1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
+		arqueroCollider.c = glm::vec3(modelmatrixColliderArquero[3]);
+		addOrUpdateColliders(collidersOBB, "arquero", arqueroCollider, modelMatrixArquero);
+
 		/*******************************************
 		 * Render de colliders
 		 *******************************************/
@@ -1890,6 +1920,8 @@ void applicationLoop() {
 					if (jt->first.compare("mayow") == 0)
 						modelMatrixMayow = std::get<1>(jt->second);
 					if (jt->first.compare("dart") == 0)
+						modelMatrixDart = std::get<1>(jt->second);
+					if (jt->first.compare("arquero") == 0)
 						modelMatrixDart = std::get<1>(jt->second);
 				}
 			}
@@ -2075,6 +2107,9 @@ void prepareScene(){
 
 	//Mayow
 	mayowModelAnimate.setShader(&shaderMulLighting);
+
+	//Arquero
+	arqueroModel.setShader(&shaderMulLighting);
 }
 
 void prepareDepthScene(){
@@ -2120,6 +2155,9 @@ void prepareDepthScene(){
 
 	//Mayow
 	mayowModelAnimate.setShader(&shaderDepth);
+	
+	//Arquero
+	arqueroModel.setShader(&shaderDepth);
 }
 
 void renderScene(bool renderParticles){
@@ -2263,6 +2301,20 @@ void renderScene(bool renderParticles){
 	modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
 	mayowModelAnimate.setAnimationIndex(animationIndex);
 	mayowModelAnimate.render(modelMatrixMayowBody);
+
+
+	// Arquero
+	modelMatrixArquero[3][1] = -GRAVITY * tmv * tmv + 3.5 * tmv + terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2]);
+	tmv = currTime - startTimeJump;
+	if (modelMatrixArquero[3][1] < terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2])) {
+		isJump = false;
+		modelMatrixArquero[3][1] = terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2]);
+	}
+	//modelMatrixArquero[3][1] = terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2]);
+	glm::mat4 modelMatrixArqueroBody = glm::mat4(modelMatrixArquero);
+	modelMatrixArqueroBody = glm::scale(modelMatrixArqueroBody, glm::vec3(1.0f, 1.0f, 1.0f));
+	arqueroModel.setAnimationIndex(animationIndex);
+	arqueroModel.render(modelMatrixArqueroBody);
 
 	/**********
 	 * Update the position with alpha objects
