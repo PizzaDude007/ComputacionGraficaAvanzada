@@ -49,6 +49,9 @@
 // OpenAL include
 #include <AL/alut.h>
 
+//Shadowbox include
+#include "Headers/ShadowBox.h"
+
 #define ARRAY_SIZE_IN_ELEMENTS(a) (sizeof(a)/sizeof(a[0]))
 
 int screenWidth;
@@ -73,60 +76,34 @@ Shader shaderParticlesFire;
 Shader shaderViewDepth;
 //Shader para dibujar el buffer de profunidad
 Shader shaderDepth;
+//Shader para dibujar una textura
+Shader shaderTexture;
+
+//Shadow box object
+ShadowBox* shadowBox;
 
 std::shared_ptr<Camera> camera(new ThirdPersonCamera());
 float distanceFromTarget = 7.0;
 
 Sphere skyboxSphere(20, 20);
+Sphere flecha(1,1);
 Box boxCollider;
 Sphere sphereCollider(10, 10);
 Box boxViewDepth;
 Box boxLightViewBox;
+Box boxIntro;
+Model rayModel;
 
-// Models complex instances
-Model modelRock;
-Model modelAircraft;
-Model modelHeliChasis;
-Model modelHeliHeli;
-Model modelLambo;
-Model modelLamboLeftDor;
-Model modelLamboRightDor;
-Model modelLamboFrontLeftWheel;
-Model modelLamboFrontRightWheel;
-Model modelLamboRearLeftWheel;
-Model modelLamboRearRightWheel;
-// Dart lego
-Model modelDartLegoBody;
-Model modelDartLegoHead;
-Model modelDartLegoMask;
-Model modelDartLegoLeftArm;
-Model modelDartLegoRightArm;
-Model modelDartLegoLeftHand;
-Model modelDartLegoRightHand;
-Model modelDartLegoLeftLeg;
-Model modelDartLegoRightLeg;
-// Lamps
-Model modelLamp1;
-Model modelLamp2;
-Model modelLampPost2;
-// Hierba
-Model modelGrass;
-// Fountain
-Model modelFountain;
-// Model animate instance
-// Mayow
-Model mayowModelAnimate;
-
-// Arquero
-Model arqueroModel;
 
 // Terrain model instance
 Terrain terrain(-1, -1, 200, 16, "../Textures/heightmap.png");
 
-GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
+GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID, textureActivaID;
 GLuint textureTerrainBackgroundID, textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint textureParticleFountainID, textureParticleFireID, texId;
 GLuint skyboxTextureID;
+
+bool iniciaPartida = false, presionaEnter = false, presionarOpcion = false;
 
 GLenum types[6] = {
 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -136,59 +113,12 @@ GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
 
-std::string fileNames[6] = { "../Textures/SkyBoxToon/Sunset_1/px.png",
-		"../Textures/SkyBoxToon/Sunset_1/nx.png",
-		"../Textures/SkyBoxToon/Sunset_1/py.png",
-		"../Textures/SkyBoxToon/Sunset_1/ny.png",
-		"../Textures/SkyBoxToon/Sunset_1/pz.png",
-		"../Textures/SkyBoxToon/Sunset_1/nz.png" };
-
-bool exitApp = false;
-int lastMousePosX, offsetX = 0;
-int lastMousePosY, offsetY = 0;
-
-// Model matrix definitions
-glm::mat4 matrixModelRock = glm::mat4(1.0);
-glm::mat4 modelMatrixHeli = glm::mat4(1.0f);
-glm::mat4 modelMatrixLambo = glm::mat4(1.0);
-glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
-glm::mat4 modelMatrixDart = glm::mat4(1.0f);
-glm::mat4 modelMatrixMayow = glm::mat4(1.0f);
-glm::mat4 modelMatrixFountain = glm::mat4(1.0f);
-
-glm::mat4 modelMatrixArquero = glm::mat4(1.0f);
-
-int animationIndex = 1;
-float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
-int modelSelected = 2;
-bool enableCountSelected = true;
-
-// Variables to animations keyframes
-bool saveFrame = false, availableSave = true;
-std::ofstream myfile;
-std::string fileName = "";
-bool record = false;
-
-// Joints interpolations Dart Lego
-std::vector<std::vector<float>> keyFramesDartJoints;
-std::vector<std::vector<glm::mat4>> keyFramesDart;
-int indexFrameDartJoints = 0;
-int indexFrameDartJointsNext = 1;
-float interpolationDartJoints = 0.0;
-int maxNumPasosDartJoints = 20;
-int numPasosDartJoints = 0;
-int indexFrameDart = 0;
-int indexFrameDartNext = 1;
-float interpolationDart = 0.0;
-int maxNumPasosDart = 200;
-int numPasosDart = 0;
-
-// Var animate helicopter
-float rotHelHelY = 0.0;
-
-// Var animate lambo dor
-int stateDoor = 0;
-float dorRotCount = 0.0;
+std::string fileNames[6] = { "../Textures/SkyBoxToon/Day_1/px.png",
+		"../Textures/SkyBoxToon/Day_1/nx.png",
+		"../Textures/SkyBoxToon/Day_1/py.png",
+		"../Textures/SkyBoxToon/Day_1/ny.png",
+		"../Textures/SkyBoxToon/Day_1/pz.png",
+		"../Textures/SkyBoxToon/Day_1/nz.png" };
 
 // Lamps positions
 std::vector<glm::vec3> lamp1Position = { glm::vec3(-7.03, 0, -19.14), glm::vec3(
@@ -200,15 +130,8 @@ std::vector<float> lamp2Orientation = { 21.37 + 90, -65.0 + 90 };
 
 // Blending model unsorted
 std::map<std::string, glm::vec3> blendingUnsorted = {
-		{"aircraft", glm::vec3(10.0, 0.0, -17.5)},
-		{"lambo", glm::vec3(23.0, 0.0, 0.0)},
-		{"heli", glm::vec3(5.0, 10.0, -5.0)},
-		{"fountain", glm::vec3(5.0, 0.0, -40.0)},
-		{"fire", glm::vec3(0.0, 0.0, 7.0)}
+		
 };
-
-double deltaTime;
-double currTime, lastTime;
 
 // Jump variables
 bool isJump = false;
@@ -233,9 +156,73 @@ GLuint drawBuf = 1;
 float particleSize = 0.5, particleLifetime = 3.0;
 double currTimeParticlesAnimationFire, lastTimeParticlesAnimationFire;
 
+bool exitApp = false;
+int lastMousePosX, offsetX = 0;
+int lastMousePosY, offsetY = 0;
+
+//Todos los nuevos modelos los podemos documentar como n1, n2... para saber dónde y cuándo se
+//generaron sus matrices de movimiento, índices de anim etc.
+
+//n1 Modelo gráfico
+//n2 Matriz de movimiento del modelo
+//n3 Vectores para la animación
+//n4 Vector de escala, para escalar el tamaño del modelo
+//n5 Indices para la animación
+//n6 booleano objeto animado o inanimado
+//n7 tipo de colisionador (OBB, AABB, SBB...)
+//n8 ángulo de giro del modelo y de su colisionador
+
+//n1 Modelo gráfico
+std::vector<Model*> listaModelos;
+Model mArquero;
+Model mTroll;
+Model mFlecha;
+
+//n2 Matriz de movimiento del modelo
+std::vector<glm::mat4*> listaMat4;
+glm::mat4 m4Arquero = glm::mat4(1.0f);
+glm::mat4 m4Troll = glm::mat4(1.0f);
+glm::mat4 m4Flecha = glm::mat4(1.0f);
+
+//n3 Vectores para la animación
+std::vector<glm::vec3*> listaVecMov;
+glm::vec3 vecMovArquero = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecMovTroll = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 vecMovFlecha = glm::vec3(0.0f, 0.0f, 0.0f);
+
+//n4 Vector de escala, para escalar el tamaño del modelo
+std::vector<glm::vec3*> listaEscalas;
+glm::vec3 escalaArquero = glm::vec3(0.005f, 0.005f, 0.005f);
+//glm::vec3 escalaTroll = glm::vec3(0.01f, 0.01f, 0.01f);
+glm::vec3 escalaTroll = glm::vec3(1.0f, 1.0f, 1.0f);
+glm::vec3 escalaFlecha = glm::vec3(1.0f, 1.0f, 1.0f);
+
+//n5 Índices para la animación
+std::vector<int> listaIndiceAnim;
+int iAnimArquero = 0;
+int iAnimTroll = 0;
+int iAnimFlecha = 0;
+
+//n6 Tipo de objeto animado
+//(0 - jugador; 1 - enemigo; 2 - inanimado)
+std::vector<int> listaTipoObjeto;
+
+//n7 Tipo de colisionador (geometría)
+//elemento[0]	0 = sinCollider	 1 = SBB; 2 = OBB
+//elemento[1]	0 = sin colisión 	1 = bloquea con colsión
+//ie 		00 -> SBB transparente a colisión
+//ie		12 -> OBB que sí bloquea colisión
+std::vector<int> listaTipoCollider;
+
+//n8 Ángulo al que se dirije el modelo y su colisionador
+std::vector<float> listaAng;
+
+bool proyectilGenerado;
+
 // Colliders
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > collidersOBB;
 std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> > collidersSBB;
+std::map<std::string, bool> collisionDetection;
 
 // Framesbuffers
 GLuint depthMap, depthMapFBO;
@@ -245,8 +232,8 @@ GLuint depthMap, depthMapFBO;
  */
 
  // OpenAL Defines
-#define NUM_BUFFERS 3
-#define NUM_SOURCES 3
+#define NUM_BUFFERS 4
+#define NUM_SOURCES 4
 #define NUM_ENVIRONMENTS 1
 // Listener
 ALfloat listenerPos[] = { 0.0, 0.0, 4.0 };
@@ -261,6 +248,9 @@ ALfloat source1Vel[] = { 0.0, 0.0, 0.0 };
 // Source 2
 ALfloat source2Pos[] = { 2.0, 0.0, 0.0 };
 ALfloat source2Vel[] = { 0.0, 0.0, 0.0 };
+// Source 3
+ALfloat source3Pos[] = { 2.0, 0.0, 0.0 };
+ALfloat source3Vel[] = { 0.0, 0.0, 0.0 };
 // Buffers
 ALuint buffer[NUM_BUFFERS];
 ALuint source[NUM_SOURCES];
@@ -271,7 +261,16 @@ ALenum format;
 ALvoid* data;
 int ch;
 ALboolean loop;
-std::vector<bool> sourcesPlay = { true, true, true };
+std::vector<bool> sourcesPlay = { true, true, true, true };
+
+//Variables de control
+int iModeloSelect = 0;
+bool enableCountSelected = true;
+
+std::string fileName = "";
+
+double deltaTime;
+double currTime, lastTime;
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow* Window, int widthRes, int heightRes);
@@ -287,6 +286,9 @@ bool processInput(bool continueApplication = true);
 void prepareScene();
 void prepareDepthScene();
 void renderScene(bool renderParticles = true);
+void createTextures();
+
+void tickMovVectores();
 
 void initParticleBuffers() {
 	// Generate the buffers
@@ -494,6 +496,12 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
+	glViewport(0, 0, screenWidth, screenHeight);
+	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+
 	// Inicialización de los shaders
 	shader.initialize("../Shaders/colorShader.vs", "../Shaders/colorShader.fs");
 	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox_fog.fs");
@@ -503,11 +511,16 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	shaderParticlesFire.initialize("../Shaders/particlesFire.vs", "../Shaders/particlesFire.fs", { "Position", "Velocity", "Age" });
 	shaderViewDepth.initialize("../Shaders/texturizado.vs", "../Shaders/texturizado_depth_view.fs");
 	shaderDepth.initialize("../Shaders/shadow_mapping_depth.vs", "../Shaders/shadow_mapping_depth.fs");
+	shaderTexture.initialize("../Shaders/texturizado.vs", "../Shaders/texturizado.fs");
 
 	// Inicializacion de los objetos.
 	skyboxSphere.init();
 	skyboxSphere.setShader(&shaderSkybox);
-	skyboxSphere.setScale(glm::vec3(100.0f, 100.0f, 100.0f));
+	skyboxSphere.setScale(glm::vec3(20.0f, 20.0f, 20.0f));
+
+	terrain.init();
+	terrain.setShader(&shaderMulLighting);
+	terrain.setPosition(glm::vec3(100, 0, 100));
 
 	boxCollider.init();
 	boxCollider.setShader(&shader);
@@ -517,91 +530,77 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	sphereCollider.setShader(&shader);
 	sphereCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
 
-	boxViewDepth.init();
-	boxViewDepth.setShader(&shaderViewDepth);
+	rayModel.init();
+	rayModel.setShader(&shader);
+	rayModel.setColor(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-	boxLightViewBox.init();
-	boxLightViewBox.setShader(&shaderViewDepth);
-
-	modelRock.loadModel("../models/rock/rock.obj");
-	modelRock.setShader(&shaderMulLighting);
-
-	modelAircraft.loadModel("../models/Aircraft_obj/E 45 Aircraft_obj.obj");
-	modelAircraft.setShader(&shaderMulLighting);
-
-	terrain.init();
-	terrain.setShader(&shaderTerrain);
-	terrain.setPosition(glm::vec3(100, 0, 100));
-
-	// Helicopter
-	modelHeliChasis.loadModel("../models/Helicopter/Mi_24_chasis.obj");
-	modelHeliChasis.setShader(&shaderMulLighting);
-	modelHeliHeli.loadModel("../models/Helicopter/Mi_24_heli.obj");
-	modelHeliHeli.setShader(&shaderMulLighting);
-	// Lamborginhi
-	modelLambo.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_chasis.obj");
-	modelLambo.setShader(&shaderMulLighting);
-	modelLamboLeftDor.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_left_dor.obj");
-	modelLamboLeftDor.setShader(&shaderMulLighting);
-	modelLamboRightDor.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_right_dor.obj");
-	modelLamboRightDor.setShader(&shaderMulLighting);
-	modelLamboFrontLeftWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_front_left_wheel.obj");
-	modelLamboFrontLeftWheel.setShader(&shaderMulLighting);
-	modelLamboFrontRightWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_front_right_wheel.obj");
-	modelLamboFrontRightWheel.setShader(&shaderMulLighting);
-	modelLamboRearLeftWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_rear_left_wheel.obj");
-	modelLamboRearLeftWheel.setShader(&shaderMulLighting);
-	modelLamboRearRightWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_rear_right_wheel.obj");
-	modelLamboRearRightWheel.setShader(&shaderMulLighting);
-
-	// Dart Lego
-	modelDartLegoBody.loadModel("../models/LegoDart/LeoDart_body.obj");
-	modelDartLegoBody.setShader(&shaderMulLighting);
-	modelDartLegoMask.loadModel("../models/LegoDart/LeoDart_mask.obj");
-	modelDartLegoMask.setShader(&shaderMulLighting);
-	modelDartLegoHead.loadModel("../models/LegoDart/LeoDart_head.obj");
-	modelDartLegoHead.setShader(&shaderMulLighting);
-	modelDartLegoLeftArm.loadModel("../models/LegoDart/LeoDart_left_arm.obj");
-	modelDartLegoLeftArm.setShader(&shaderMulLighting);
-	modelDartLegoRightArm.loadModel("../models/LegoDart/LeoDart_right_arm.obj");
-	modelDartLegoRightArm.setShader(&shaderMulLighting);
-	modelDartLegoLeftHand.loadModel("../models/LegoDart/LeoDart_left_hand.obj");
-	modelDartLegoLeftHand.setShader(&shaderMulLighting);
-	modelDartLegoRightHand.loadModel("../models/LegoDart/LeoDart_right_hand.obj");
-	modelDartLegoRightHand.setShader(&shaderMulLighting);
-	modelDartLegoLeftLeg.loadModel("../models/LegoDart/LeoDart_left_leg.obj");
-	modelDartLegoLeftLeg.setShader(&shaderMulLighting);
-	modelDartLegoRightLeg.loadModel("../models/LegoDart/LeoDart_right_leg.obj");
-	modelDartLegoRightLeg.setShader(&shaderMulLighting);
-
-	//Lamp models
-	modelLamp1.loadModel("../models/Street-Lamp-Black/objLamp.obj");
-	modelLamp1.setShader(&shaderMulLighting);
-	modelLamp2.loadModel("../models/Street_Light/Lamp.obj");
-	modelLamp2.setShader(&shaderMulLighting);
-	modelLampPost2.loadModel("../models/Street_Light/LampPost.obj");
-	modelLampPost2.setShader(&shaderMulLighting);
-
-	//Grass
-	modelGrass.loadModel("../models/grass/grassModel.obj");
-	modelGrass.setShader(&shaderMulLighting);
-
-	//Fountain
-	modelFountain.loadModel("../models/fountain/fountain.obj");
-	modelFountain.setShader(&shaderMulLighting);
-
-	//Mayow
-	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
-	mayowModelAnimate.setShader(&shaderMulLighting);
+	// - marroja
+	//n1 Modelo gráfico
+	//n2 Matriz del modelo
+	//n3 Vectores de movimiento para la animación
+	//n4 Vector de escala, para escalar el tamaño del modelo
+	//n5 Índices para la animación
+	//n6 Tipo de objeto jugador/enemigo/inanimado
+	//n7 Tipo de collider OBB-SBB, con colisión-sin colisión
+	//n8 Ángulo del modelo y su collider
 
 	//Arquero
-	//arqueroModel.loadModel("../models/download/arquero/arquero.fbx");
-	arqueroModel.loadModel("../models/download/ork/ork_green.fbx");
-	arqueroModel.setShader(&shaderMulLighting);
+	//mArquero.loadModel("../models/Arquero/Arquero1.fbx");
+	mArquero.loadModel("../models/download/arquero/arquero.fbx");
+	m4Arquero = glm::mat4(1.0f);
+	vecMovArquero = glm::vec3(0.0f, 0.0f, 0.002f);
+
+	listaModelos.push_back(&mArquero);			//n1
+	listaMat4.push_back(&m4Arquero);			//n2
+	listaVecMov.push_back(&vecMovArquero);		//n3
+	listaEscalas.push_back(&escalaArquero);		//n4
+	listaIndiceAnim.push_back(iAnimArquero);	//n5
+	listaTipoObjeto.push_back(0);				//n6
+	listaTipoCollider.push_back(12);			//n7 10 -> tiene colisión 2 -> OBB
+	listaAng.push_back(0.0f);					//n8 ángulo del modelo y su collider
+	listaModelos.back()->setShader(&shaderMulLighting); // sí se puede manipular desde el vector
+	//n6 quizá valga la pena hacerlo el shader (qpd qph) queda-por-determinar queda-por-hacer
+
+	//Troll
+	//mTroll.loadModel("../models/download/Troll/Troll_anim.fbx");
+	mTroll.loadModel("../models/download/troll/troll_green.fbx");
+	m4Troll = glm::mat4(1.0f);
+	vecMovTroll = glm::vec3(0.0f, 0.0f, 0.002f);
+
+	listaModelos.push_back(&mTroll);			//n1
+	listaMat4.push_back(&m4Troll);				//n2
+	listaVecMov.push_back(&vecMovTroll);		//n3
+	listaEscalas.push_back(&escalaTroll);		//n4
+	listaIndiceAnim.push_back(iAnimTroll);		//n5
+	listaTipoObjeto.push_back(0);				//n6 0 = jugador; 1 = enemigo; 2 = objeto
+	listaTipoCollider.push_back(12);			//n7 10 -> tiene colisión 2 -> OBB
+	listaAng.push_back(0.0f);					//n8 ángulo del modelo y su collider
+	listaModelos.back()->setShader(&shaderMulLighting); // sí se puede manipular desde el vector
+
+	//Flecha
+	//Flecha.loadModel("../models/download/Troll/Troll_anim.fbx");
+	//mFlecha.loadModel("../models/download/troll/troll_green.fbx");
+	//Podemos no cargarle modelo de inmediato y tratarlo como una esferita
+	m4Flecha = glm::mat4(1.0f);
+	vecMovFlecha = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	listaModelos.push_back(&mFlecha);			//n1
+	listaMat4.push_back(&m4Flecha);				//n2
+	listaVecMov.push_back(&vecMovFlecha);		//n3
+	listaEscalas.push_back(&escalaFlecha);		//n4
+	listaIndiceAnim.push_back(0);				//n5
+	listaTipoObjeto.push_back(3);				//n6 0 = jugador; 1 = enemigo; 2 = objeto; 3 proyectil
+	listaTipoCollider.push_back(11);			//n7 10 -> tiene colisión 2 -> OBB //La flecha que sea una esfera
+	listaAng.push_back(0.0f);					//n8 ángulo paralelo al piso y su collider
+	listaModelos.back()->setShader(&shaderMulLighting); // sí se puede manipular desde el vector
+
+	// - fin creación modelos
 
 	camera->setPosition(glm::vec3(0.0, 0.0, 10.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
 	camera->setSensitivity(1.0);
+
+	//createTextures();
 
 	// Definimos el tamanio de la imagen
 	int imageWidth, imageHeight;
@@ -663,6 +662,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	}
 	else
 		std::cout << "Failed to load texture" << std::endl;
+	
 	// Libera la memoria de la textura
 	textureCesped.freeImage(bitmap);
 
@@ -674,18 +674,17 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	data = textureWall.convertToData(bitmap, imageWidth,
 		imageHeight);
 	// Creando la textura con id 1
-	glGenTextures(1, &textureWallID);
+	glGenTextures(1, &textureCespedID);
 	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureWallID);
+	glBindTexture(GL_TEXTURE_2D, textureCespedID);
 	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	// set texture filtering parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	// Verifica si se pudo abrir la textura
 	if (data) {
-		// Transferis los datos de la imagen a memoria
 		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
 		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
 		// a los datos
@@ -737,8 +736,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	bitmap = textureHighway.loadImage();
 	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
-	data = textureHighway.convertToData(bitmap, imageWidth,
-		imageHeight);
+	data = textureHighway.convertToData(bitmap, imageWidth, imageHeight);
 	// Creando la textura con id 1
 	glGenTextures(1, &textureHighwayID);
 	// Enlazar esa textura a una tipo de textura de 2D.
@@ -1095,6 +1093,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	buffer[0] = alutCreateBufferFromFile("../sounds/fountain.wav");
 	buffer[1] = alutCreateBufferFromFile("../sounds/fire.wav");
 	buffer[2] = alutCreateBufferFromFile("../sounds/darth_vader.wav");
+	buffer[3] = alutCreateBufferFromFile("../sounds/lawyer1.wav");
 	int errorAlut = alutGetError();
 	if (errorAlut != ALUT_ERROR_NO_ERROR) {
 		printf("- Error open files with alut %d !!\n", errorAlut);
@@ -1135,6 +1134,14 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	alSourcei(source[2], AL_BUFFER, buffer[2]);
 	alSourcei(source[2], AL_LOOPING, AL_TRUE);
 	alSourcef(source[2], AL_MAX_DISTANCE, 500);
+
+	alSourcef(source[3], AL_PITCH, 1.0f);
+	alSourcef(source[3], AL_GAIN, 0.3f);
+	alSourcefv(source[3], AL_POSITION, source3Pos);
+	alSourcefv(source[3], AL_VELOCITY, source3Vel);
+	alSourcei(source[3], AL_BUFFER, buffer[3]);
+	alSourcei(source[3], AL_LOOPING, AL_FALSE);
+	alSourcef(source[3], AL_MAX_DISTANCE, 500);
 }
 
 void destroy() {
@@ -1155,42 +1162,14 @@ void destroy() {
 	skyboxSphere.destroy();
 	boxCollider.destroy();
 	sphereCollider.destroy();
+	rayModel.destroy();
 	boxViewDepth.destroy();
 	boxLightViewBox.destroy();
 
-	// Terrains objects Delete
-	terrain.destroy();
-
-	// Custom objects Delete
-	modelAircraft.destroy();
-	modelDartLegoBody.destroy();
-	modelDartLegoHead.destroy();
-	modelDartLegoLeftArm.destroy();
-	modelDartLegoLeftHand.destroy();
-	modelDartLegoLeftLeg.destroy();
-	modelDartLegoMask.destroy();
-	modelDartLegoRightArm.destroy();
-	modelDartLegoRightHand.destroy();
-	modelDartLegoRightLeg.destroy();
-	modelHeliChasis.destroy();
-	modelHeliHeli.destroy();
-	modelLambo.destroy();
-	modelLamboFrontLeftWheel.destroy();
-	modelLamboFrontRightWheel.destroy();
-	modelLamboLeftDor.destroy();
-	modelLamboRearLeftWheel.destroy();
-	modelLamboRearRightWheel.destroy();
-	modelLamboRightDor.destroy();
-	modelRock.destroy();
-	modelLamp1.destroy();
-	modelLamp2.destroy();
-	modelLampPost2.destroy();
-	modelGrass.destroy();
-	modelFountain.destroy();
-
-	// Custom objects animate
-	mayowModelAnimate.destroy();
-	arqueroModel.destroy();
+	// - marroja
+	for (auto& m : listaModelos) {
+		m->destroy();
+	}
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -1280,6 +1259,22 @@ bool processInput(bool continueApplication) {
 		return false;
 	}
 
+	if (!iniciaPartida) {
+		bool statusEnter = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
+		if (textureActivaID == textureCespedID && statusEnter)
+			iniciaPartida = true;
+		if (!presionarOpcion && glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) {
+			presionarOpcion = true;
+			if (textureActivaID = textureCespedID)
+				textureActivaID = textureWallID;
+			else if (textureActivaID = textureWallID)
+				textureActivaID = textureWindowID;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_0) == GLFW_RELEASE) {
+			presionarOpcion = false;
+		}
+	}
+
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 		camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
@@ -1290,107 +1285,69 @@ bool processInput(bool continueApplication) {
 	// Seleccionar modelo
 	if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
 		enableCountSelected = false;
-		modelSelected++;
-		if (modelSelected > 2)
-			modelSelected = 0;
-		if (modelSelected == 1)
-			fileName = "../animaciones/animation_dart_joints.txt";
-		if (modelSelected == 2)
-			fileName = "../animaciones/animation_dart.txt";
-		std::cout << "modelSelected:" << modelSelected << std::endl;
+		iModeloSelect++;
+		if (iModeloSelect >= listaModelos.size())
+			iModeloSelect = 0;
+		if (iModeloSelect == 0)
+			fileName = "Arquero";
+		if (iModeloSelect == 1)
+			fileName = "Troll";
+		std::cout << "modelSelected:" << iModeloSelect << std::endl;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
 		enableCountSelected = true;
 
-	// Guardar key frames
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
-		&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-		record = true;
-		if (myfile.is_open())
-			myfile.close();
-		myfile.open(fileName);
-	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE
-		&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-		record = false;
-		myfile.close();
-		if (modelSelected == 1)
-			keyFramesDartJoints = getKeyRotFrames(fileName);
-		if (modelSelected == 2)
-			keyFramesDart = getKeyFrames(fileName);
-	}
-	if (availableSave && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-		saveFrame = true;
-		availableSave = false;
-	}if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
-		availableSave = true;
 
-	// Dart Lego model movements
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-		glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-		glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg -= 0.02;
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, 0.02f, glm::vec3(0, 1, 0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, -0.02f, glm::vec3(0, 1, 0));
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(-0.02, 0.0, 0.0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));
+	//Para generar flecha/proyectil qpr
+	if(!proyectilGenerado){
+		if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+			m4Flecha = glm::translate(m4Flecha, glm::vec3(m4Arquero[3]));
+			//vecMovFlecha = glm::vec3(0.0f, -GRAVITY, 0.3F);
+		}
+		if(glfwGetKey(window, GLFW_KEY_R) == GLFW_RELEASE){
+			//m4Flecha = glm::translate(m4Flecha, glm::vec3(m4Arquero[3]));
+			vecMovFlecha = glm::vec3(0.0f, 0.2f, 0.3f);
+			proyectilGenerado = true;
+		}
+	}
 
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-		modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(1.0f), glm::vec3(0, 1, 0));
-		animationIndex = 0;
-	}
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-		modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-1.0f), glm::vec3(0, 1, 0));
-		animationIndex = 0;
-	}if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0, 0, 0.02));
-		animationIndex = 0;
-	}
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(0, 0, -0.02));
-		animationIndex = 0;
+	//para mover cualquier modelo seleccionable - marroja
+	//
+	listaIndiceAnim[iModeloSelect] = 1;
+
+	if (listaTipoObjeto[iModeloSelect] == 0) {
+		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+			//*listaMat4[iModeloSelect] = glm::translate(*listaMat4[iModeloSelect], *listaVecMov[iModeloSelect]); //qpr
+			(*listaVecMov[iModeloSelect]) = glm::vec3(0.0f, 0.0f, +0.02f); //qpr
+			listaIndiceAnim[iModeloSelect] = 0;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+			//*listaMat4[iModeloSelect] = glm::translate(*listaMat4[iModeloSelect], -(*listaVecMov[iModeloSelect])); //qpr
+			(*listaVecMov[iModeloSelect]) = glm::vec3(0.0f, 0.0f, -0.02f); //qpr
+			listaIndiceAnim[iModeloSelect] = 0;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE){
+			(*listaVecMov[iModeloSelect]) = glm::vec3(0.0f, 0.0f, 0.0f); //qpr
+			(listaIndiceAnim[iModeloSelect]) = 1;
+		}
+		
+
+		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+			
+			//Usamos listaAng como acumulador para el desplazamiento de la matriz de colisionador
+			listaAng[iModeloSelect] += 0.02f;
+			if (listaAng[iModeloSelect] > 360.0f)
+				listaAng[iModeloSelect] = 0.0f;
+			*listaMat4[iModeloSelect] = glm::rotate(*listaMat4[iModeloSelect], 0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+			listaIndiceAnim[iModeloSelect] = 0;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+			listaAng[iModeloSelect] -= 0.02f;
+			if (listaAng[iModeloSelect] < -360.0f)
+				listaAng[iModeloSelect] = 0.0f;
+			*listaMat4[iModeloSelect] = glm::rotate(*listaMat4[iModeloSelect], -0.02f, glm::vec3(0.0f, 1.0f, 0.0f));
+			listaIndiceAnim[iModeloSelect] = 0;
+		}
 	}
 
 	bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
@@ -1398,7 +1355,9 @@ bool processInput(bool continueApplication) {
 		isJump = true;
 		startTimeJump = currTime;
 		tmv = 0;
+		sourcesPlay[3] = true;
 	}
+
 
 	glfwPollEvents();
 	return continueApplication;
@@ -1412,30 +1371,9 @@ void applicationLoop() {
 	glm::vec3 target;
 	float angleTarget;
 
-	matrixModelRock = glm::translate(matrixModelRock, glm::vec3(-3.0, 0.0, 2.0));
-
-	modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
-
-	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(10.0, 2.0, -17.5));
-
-	modelMatrixLambo = glm::translate(modelMatrixLambo, glm::vec3(23.0, 0.0, 0.0));
-
-	modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(3.0, 0.0, 20.0));
-
-	modelMatrixMayow = glm::translate(modelMatrixMayow, glm::vec3(13.0f, 0.05f, -5.0f));
-	modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-90.0f), glm::vec3(0, 1, 0));
-
-	modelMatrixArquero = glm::translate(modelMatrixArquero, glm::vec3(0.0f, 0.0f, -5.0f));
-	//modelMatrixArquero = glm::scale(modelMatrixArquero, glm::vec3(0.02f, 0.02f, 0.02f));
-
-	modelMatrixFountain = glm::translate(modelMatrixFountain, glm::vec3(5.0, 0.0, -40.0));
-	modelMatrixFountain[3][1] = terrain.getHeightTerrain(modelMatrixFountain[3][0], modelMatrixFountain[3][2]) + 0.2;
-	modelMatrixFountain = glm::scale(modelMatrixFountain, glm::vec3(10.0f, 10.0f, 10.0f));
-
-	// Variables to interpolation key frames
-	fileName = "../animaciones/animation_dart_joints.txt";
-	keyFramesDartJoints = getKeyRotFrames(fileName);
-	keyFramesDart = getKeyFrames("../animaciones/animation_dart.txt");
+	m4Arquero = glm::translate(m4Arquero, glm::vec3(34, 0, -14));//pos inicial
+	m4Troll = glm::translate(m4Troll, glm::vec3(-4, 0, 4));//pos inicial
+	m4Flecha = glm::translate(m4Flecha, glm::vec3(0.0f, -1000.0f, 0.0f)); // Posición inicial extremadamente lejos, invisible
 
 	lastTime = TimeManager::Instance().GetTime();
 
@@ -1447,7 +1385,9 @@ void applicationLoop() {
 	lastTimeParticlesAnimationFire = lastTime;
 
 	glm::vec3 lightPos = glm::vec3(10.0, 10.0, 0.0);
-
+	shadowBox = new ShadowBox(lightPos, camera.get(), 15.0f, 0.01f, 45.0f);
+	textureActivaID = textureCespedID;
+	
 	while (psi) {
 		currTime = TimeManager::Instance().GetTime();
 		if (currTime - lastTime < 0.016666667) {
@@ -1461,6 +1401,9 @@ void applicationLoop() {
 
 		std::map<std::string, bool> collisionDetection;
 
+		//Se llama a la actualización de los vectores de movimiento
+		tickMovVectores();
+
 		// Variables donde se guardan las matrices de cada articulacion por 1 frame
 		std::vector<float> matrixDartJoints;
 		std::vector<glm::mat4> matrixDart;
@@ -1468,34 +1411,32 @@ void applicationLoop() {
 		glm::mat4 projection = glm::perspective(glm::radians(45.0f),
 			(float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 
-		if (modelSelected == 1) {
-			axis = glm::axis(glm::quat_cast(modelMatrixDart));
-			angleTarget = glm::angle(glm::quat_cast(modelMatrixDart));
-			target = modelMatrixDart[3];
-		}
-		else {
-			axis = glm::axis(glm::quat_cast(modelMatrixMayow));
-			angleTarget = glm::angle(glm::quat_cast(modelMatrixMayow));
-			target = modelMatrixMayow[3];
-		}
+		axis = glm::axis(glm::quat_cast(*(listaMat4[iModeloSelect])));
+		angleTarget = glm::angle(glm::quat_cast(*(listaMat4[iModeloSelect])));
+		target = (*listaMat4[iModeloSelect])[3];
 
 		if (std::isnan(angleTarget))
 			angleTarget = 0.0;
 		if (axis.y < 0)
 			angleTarget = -angleTarget;
-		if (modelSelected == 1)
-			angleTarget -= glm::radians(90.0f);
+		//if (iModeloSelect == 1)
+		//	angleTarget -= glm::radians(90.0f);
+		
 		camera->setCameraTarget(target);
 		camera->setAngleTarget(angleTarget);
 		camera->updateCamera();
 		view = camera->getViewMatrix();
 
 		// Matriz de proyección del shadow mapping
-		glm::mat4 lightProjection, lightView;
+		glm::mat4 lightProjection = glm::mat4(1.0f), lightView = glm::mat4(1.0f);
 		glm::mat4 lightSpaceMatrix;
-		float near_plane = 0.1f, far_plane = 20.0f;
-		lightProjection = glm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, near_plane, far_plane);
-		lightView = glm::lookAt(lightPos, glm::vec3(0.0), glm::vec3(0.0, 1.0, 0.0));
+		shadowBox->update(screenWidth, screenHeight);
+		glm::vec3 boxPosition = shadowBox->getCenter();
+		lightView = glm::lookAt(boxPosition, boxPosition + glm::normalize(-lightPos), glm::vec3(0.0f, 1.0f, 0.0f));
+		lightProjection[0][0] = 2.0f / shadowBox->getWidth();
+		lightProjection[1][1] = 2.0f / shadowBox->getHeight();
+		lightProjection[2][2] = -2.0f / shadowBox->getLength();
+		lightProjection[3][3] = 1.0f;
 		lightSpaceMatrix = lightProjection * lightView;
 		shaderDepth.setMatrix4("lightSpaceMatrix", 1, false, glm::value_ptr(lightSpaceMatrix));
 
@@ -1560,7 +1501,7 @@ void applicationLoop() {
 		/*******************************************
 		 * Propiedades SpotLights
 		 *******************************************/
-		glm::vec3 spotPosition = glm::vec3(modelMatrixHeli * glm::vec4(0.32437, 0.226053, 1.79149, 1.0));
+		/*glm::vec3 spotPosition = glm::vec3(modelMatrixHeli * glm::vec4(0.32437, 0.226053, 1.79149, 1.0));
 		shaderMulLighting.setInt("spotLightCount", 1);
 		shaderTerrain.setInt("spotLightCount", 1);
 		shaderMulLighting.setVectorFloat3("spotLights[0].light.ambient", glm::value_ptr(glm::vec3(0.0, 0.0, 0.0)));
@@ -1582,12 +1523,12 @@ void applicationLoop() {
 		shaderTerrain.setFloat("spotLights[0].linear", 0.074);
 		shaderTerrain.setFloat("spotLights[0].quadratic", 0.03);
 		shaderTerrain.setFloat("spotLights[0].cutOff", cos(glm::radians(12.5f)));
-		shaderTerrain.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));
+		shaderTerrain.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));*/
 
 		/*******************************************
 		 * Propiedades PointLights
 		 *******************************************/
-		shaderMulLighting.setInt("pointLightCount", lamp1Position.size() + lamp2Orientation.size());
+		/*shaderMulLighting.setInt("pointLightCount", lamp1Position.size() + lamp2Orientation.size());
 		shaderTerrain.setInt("pointLightCount", lamp1Position.size() + lamp2Orientation.size());
 		for (int i = 0; i < lamp1Position.size(); i++) {
 			glm::mat4 matrixAdjustLamp = glm::mat4(1.0f);
@@ -1606,12 +1547,6 @@ void applicationLoop() {
 			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.01)));
 			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.02)));
 			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].position", glm::value_ptr(lampPosition));
-			shaderTerrain.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0);
-			shaderTerrain.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.09);
-			shaderTerrain.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.02);
-		}
-		for (int i = 0; i < lamp2Position.size(); i++) {
 			glm::mat4 matrixAdjustLamp = glm::mat4(1.0f);
 			matrixAdjustLamp = glm::translate(matrixAdjustLamp, lamp2Position[i]);
 			matrixAdjustLamp = glm::rotate(matrixAdjustLamp, glm::radians(lamp2Orientation[i]), glm::vec3(0, 1, 0));
@@ -1632,7 +1567,18 @@ void applicationLoop() {
 			shaderTerrain.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].constant", 1.0);
 			shaderTerrain.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].linear", 0.09);
 			shaderTerrain.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].quadratic", 0.02);
-		}
+		} */
+
+		/*if (!iniciaPartida) {
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 0, screenWidth, screenHeight);
+			shaderTexture.setMatrix4("view", 1, false, glm::value_ptr(glm::mat4(1.0)));
+			shaderTexture.setMatrix4("projection", 1, false, glm::value_ptr(glm::mat4(1.0)));
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textureActivaID);
+			boxIntro.render();
+			glfwSwapBuffers(window);
+		}*/
 
 		/*******************************************
 		 * 1.- We render the depth buffer
@@ -1707,211 +1653,124 @@ void applicationLoop() {
 		 glEnable(GL_CULL_FACE);*/
 
 		 /*******************************************
-		  * Creacion de colliders
-		  * IMPORTANT do this before interpolations
+		  * Render de colliders
 		  *******************************************/
-		  // Collider del dart vader lego
-		glm::mat4 modelmatrixColliderDart = glm::mat4(modelMatrixDart);
-		AbstractModel::OBB dartLegoBodyCollider;
-		// Set the orientation of collider before doing the scale
-		dartLegoBodyCollider.u = glm::quat_cast(modelMatrixDart);
-		modelmatrixColliderDart = glm::scale(modelmatrixColliderDart, glm::vec3(0.5, 0.5, 0.5));
-		modelmatrixColliderDart = glm::translate(modelmatrixColliderDart,
-			glm::vec3(modelDartLegoBody.getObb().c.x,
-				modelDartLegoBody.getObb().c.y,
-				modelDartLegoBody.getObb().c.z));
-		dartLegoBodyCollider.c = glm::vec3(modelmatrixColliderDart[3]);
-		dartLegoBodyCollider.e = modelDartLegoBody.getObb().e * glm::vec3(0.5, 0.5, 0.5);
-		addOrUpdateColliders(collidersOBB, "dart", dartLegoBodyCollider, modelMatrixDart);
 
-		// Collider del aricraft
-		glm::mat4 modelMatrixColliderAircraft = glm::mat4(modelMatrixAircraft);
-		AbstractModel::OBB aircraftCollider;
-		// Set the orientation of collider before doing the scale
-		aircraftCollider.u = glm::quat_cast(modelMatrixAircraft);
-		modelMatrixColliderAircraft = glm::scale(modelMatrixColliderAircraft,
-			glm::vec3(1.0, 1.0, 1.0));
-		modelMatrixColliderAircraft = glm::translate(
-			modelMatrixColliderAircraft, modelAircraft.getObb().c);
-		aircraftCollider.c = glm::vec3(modelMatrixColliderAircraft[3]);
-		aircraftCollider.e = modelAircraft.getObb().e * glm::vec3(1.0, 1.0, 1.0);
-		addOrUpdateColliders(collidersOBB, "aircraft", aircraftCollider, modelMatrixAircraft);
 
-		//Collider del la rock
-		AbstractModel::SBB rockCollider;
-		glm::mat4 modelMatrixColliderRock = glm::mat4(matrixModelRock);
-		modelMatrixColliderRock = glm::scale(modelMatrixColliderRock, glm::vec3(1.0, 1.0, 1.0));
-		modelMatrixColliderRock = glm::translate(modelMatrixColliderRock, modelRock.getSbb().c);
-		rockCollider.c = glm::vec3(modelMatrixColliderRock[3]);
-		rockCollider.ratio = modelRock.getSbb().ratio * 1.0;
-		addOrUpdateColliders(collidersSBB, "rock", rockCollider, matrixModelRock);
-
-		// Lamps1 colliders
-		for (int i = 0; i < lamp1Position.size(); i++) {
-			AbstractModel::OBB lampCollider;
-			glm::mat4 modelMatrixColliderLamp = glm::mat4(1.0);
-			modelMatrixColliderLamp = glm::translate(modelMatrixColliderLamp, lamp1Position[i]);
-			modelMatrixColliderLamp = glm::rotate(modelMatrixColliderLamp, glm::radians(lamp1Orientation[i]),
-				glm::vec3(0, 1, 0));
-			addOrUpdateColliders(collidersOBB, "lamp1-" + std::to_string(i), lampCollider, modelMatrixColliderLamp);
-			// Set the orientation of collider before doing the scale
-			lampCollider.u = glm::quat_cast(modelMatrixColliderLamp);
-			modelMatrixColliderLamp = glm::scale(modelMatrixColliderLamp, glm::vec3(0.5, 0.5, 0.5));
-			modelMatrixColliderLamp = glm::translate(modelMatrixColliderLamp, modelLamp1.getObb().c);
-			lampCollider.c = glm::vec3(modelMatrixColliderLamp[3]);
-			lampCollider.e = modelLamp1.getObb().e * glm::vec3(0.5, 0.5, 0.5);
-			std::get<0>(collidersOBB.find("lamp1-" + std::to_string(i))->second) = lampCollider;
-		}
-
-		// Lamps2 colliders
-		for (int i = 0; i < lamp2Position.size(); i++) {
-			AbstractModel::OBB lampCollider;
-			glm::mat4 modelMatrixColliderLamp = glm::mat4(1.0);
-			modelMatrixColliderLamp = glm::translate(modelMatrixColliderLamp, lamp2Position[i]);
-			modelMatrixColliderLamp = glm::rotate(modelMatrixColliderLamp, glm::radians(lamp2Orientation[i]),
-				glm::vec3(0, 1, 0));
-			addOrUpdateColliders(collidersOBB, "lamp2-" + std::to_string(i), lampCollider, modelMatrixColliderLamp);
-			// Set the orientation of collider before doing the scale
-			lampCollider.u = glm::quat_cast(modelMatrixColliderLamp);
-			modelMatrixColliderLamp = glm::scale(modelMatrixColliderLamp, glm::vec3(1.0, 1.0, 1.0));
-			modelMatrixColliderLamp = glm::translate(modelMatrixColliderLamp, modelLampPost2.getObb().c);
-			lampCollider.c = glm::vec3(modelMatrixColliderLamp[3]);
-			lampCollider.e = modelLampPost2.getObb().e * glm::vec3(1.0, 1.0, 1.0);
-			std::get<0>(collidersOBB.find("lamp2-" + std::to_string(i))->second) = lampCollider;
-		}
-
-		// Collider de mayow
-		AbstractModel::OBB mayowCollider;
-		glm::mat4 modelmatrixColliderMayow = glm::mat4(modelMatrixMayow);
-		modelmatrixColliderMayow = glm::rotate(modelmatrixColliderMayow,
-			glm::radians(-90.0f), glm::vec3(1, 0, 0));
-		// Set the orientation of collider before doing the scale
-		mayowCollider.u = glm::quat_cast(modelmatrixColliderMayow);
-		modelmatrixColliderMayow = glm::scale(modelmatrixColliderMayow, glm::vec3(0.021, 0.021, 0.021));
-		modelmatrixColliderMayow = glm::translate(modelmatrixColliderMayow,
-			glm::vec3(mayowModelAnimate.getObb().c.x,
-				mayowModelAnimate.getObb().c.y,
-				mayowModelAnimate.getObb().c.z));
-		mayowCollider.e = mayowModelAnimate.getObb().e * glm::vec3(0.021, 0.021, 0.021) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
-		mayowCollider.c = glm::vec3(modelmatrixColliderMayow[3]);
-		addOrUpdateColliders(collidersOBB, "mayow", mayowCollider, modelMatrixMayow);
-
-		// Collider de Arquero
-		AbstractModel::OBB arqueroCollider;
-		glm::mat4 modelmatrixColliderArquero = glm::mat4(modelMatrixArquero);
-		modelmatrixColliderArquero = glm::rotate(modelmatrixColliderArquero,
-			glm::radians(-90.0f), glm::vec3(1, 0, 0));
-		// Set the orientation of collider before doing the scale
-		arqueroCollider.u = glm::quat_cast(modelmatrixColliderArquero);
-		modelmatrixColliderArquero = glm::scale(modelmatrixColliderArquero, glm::vec3(1.0f, 1.0f, 1.0f));
-		modelmatrixColliderArquero = glm::translate(modelmatrixColliderArquero,
-			glm::vec3(arqueroModel.getObb().c.x,
-				arqueroModel.getObb().c.y,
-				arqueroModel.getObb().c.z));
-		arqueroCollider.e = arqueroModel.getObb().e * glm::vec3(1.0f, 1.0f, 1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
-		arqueroCollider.c = glm::vec3(modelmatrixColliderArquero[3]);
-		addOrUpdateColliders(collidersOBB, "arquero", arqueroCollider, modelMatrixArquero);
-
-		/*******************************************
-		 * Render de colliders
-		 *******************************************/
+		//https://stackoverflow.com/questions/17918033/glm-decompose-mat4-into-translation-and-rotation
+		
+		int i = 0;
 		for (std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator it =
 			collidersOBB.begin(); it != collidersOBB.end(); it++) {
 			glm::mat4 matrixCollider = glm::mat4(1.0);
+			//matrixCollider = glm::rotate(matrixCollider, listaAng[i], glm::vec3(0.0, 1.0, 0.0));	//qpr 1
 			matrixCollider = glm::translate(matrixCollider, std::get<0>(it->second).c);
 			matrixCollider = matrixCollider * glm::mat4(std::get<0>(it->second).u);
-			matrixCollider = glm::scale(matrixCollider, std::get<0>(it->second).e * 2.0f);
+			matrixCollider = glm::scale(matrixCollider, std::get<0>(it->second).e * 1.0f);
 			boxCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
 			boxCollider.enableWireMode();
 			boxCollider.render(matrixCollider);
+			i++;
 		}
 
 		for (std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
 			collidersSBB.begin(); it != collidersSBB.end(); it++) {
 			glm::mat4 matrixCollider = glm::mat4(1.0);
 			matrixCollider = glm::translate(matrixCollider, std::get<0>(it->second).c);
-			matrixCollider = glm::scale(matrixCollider, glm::vec3(std::get<0>(it->second).ratio * 2.0f));
+			matrixCollider = glm::scale(matrixCollider, glm::vec3(std::get<0>(it->second).ratio * 1.0f));
 			sphereCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
 			sphereCollider.enableWireMode();
 			sphereCollider.render(matrixCollider);
+		}  
+
+		//----------------------Fin de RENDER modelos-------------------------------
+
+		//----------------------Principio Colisionadores -------------------
+
+
+		for (int i = 0; i < listaModelos.size(); i++) {
+			glm::mat4 m4Collider = glm::mat4(*listaMat4[i]);
+
+			//Se trunca el número de las unidades con la división y se revisa solo la decena
+			if (listaTipoCollider[i] / 10 % 10 == 0) {
+				//Detección de colsión SIN restricción
+			}
+			//Se trunca el número de las unidades con la división y se revisa solo la decena
+			else if (listaTipoCollider[i] / 10 % 10 == 1) {
+				//Detección de colisión y restricción de movimiento
+			}
+
+			if (listaTipoCollider[i] % 10 == 0) {//Sin geometría
+
+			}
+			else if (listaTipoCollider[i] % 10 == 1) {//SBB
+				AbstractModel::SBB col;
+
+				glm::vec3 escalaCollider = glm::vec3(1.0, 1.0, 1.0);
+				m4Collider = glm::scale(m4Collider, escalaCollider);
+				m4Collider = glm::translate(m4Collider, listaModelos[i]->getSbb().c);
+				col.c = glm::vec3(m4Collider[3]);
+				col.ratio = listaModelos[i]->getSbb().ratio + glm::length(*(listaEscalas[i]));
+				addOrUpdateColliders(collidersSBB, std::to_string(i), col, *listaMat4[i]);		
+			}
+			else if (listaTipoCollider[i] % 10 == 2) {//OBB
+				AbstractModel::OBB col;
+
+				glm::vec3 escalaCollider = glm::vec3(1.0, 1.0, 1.0);
+				m4Collider = glm::scale(m4Collider, escalaCollider);
+				m4Collider = glm::translate(m4Collider, listaModelos[i]->getSbb().c);
+				col.c = glm::vec3(m4Collider[3]);
+				col.e = listaModelos[i]->getObb().e * glm::length(*(listaEscalas[i]));
+				addOrUpdateColliders(collidersOBB, std::to_string(i), col, *listaMat4[i]);
+			}
 		}
 
-		// Esto es para ilustrar la transformacion inversa de los coliders
-		/*glm::vec3 cinv = glm::inverse(mayowCollider.u) * glm::vec4(rockCollider.c, 1.0);
-		glm::mat4 invColliderS = glm::mat4(1.0);
-		invColliderS = glm::translate(invColliderS, cinv);
-		invColliderS =  invColliderS * glm::mat4(mayowCollider.u);
-		invColliderS = glm::scale(invColliderS, glm::vec3(rockCollider.ratio * 2.0, rockCollider.ratio * 2.0, rockCollider.ratio * 2.0));
-		sphereCollider.setColor(glm::vec4(1.0, 1.0, 0.0, 1.0));
-		sphereCollider.enableWireMode();
-		sphereCollider.render(invColliderS);
-		glm::vec3 cinv2 = glm::inverse(mayowCollider.u) * glm::vec4(mayowCollider.c, 1.0);
-		glm::mat4 invColliderB = glm::mat4(1.0);
-		invColliderB = glm::translate(invColliderB, cinv2);
-		invColliderB = glm::scale(invColliderB, mayowCollider.e * 2.0f);
-		boxCollider.setColor(glm::vec4(1.0, 1.0, 0.0, 1.0));
-		boxCollider.enableWireMode();
-		boxCollider.render(invColliderB);
-		// Se regresa el color blanco
-		sphereCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
-		boxCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));*/
+		//*************************************************************
+		//Detección de colisión
+		//*************************************************************
+		
+		//colision entre esferas (SBB)
+		for (std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> > ::iterator it =
+			collidersSBB.begin(); it != collidersSBB.end(); it++) {
+			bool isCollision = false;
+			for (std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>> ::iterator
+				jt = collidersSBB.begin(); jt != collidersSBB.end() && !isCollision; jt++) {
+				if (it != jt && testSphereSphereIntersection(std::get<0>(it->second), std::get<0>(jt->second))) {
+					std::cout << "Existe colision entre: " << it->first << " y " << jt->first << std::endl;
+					isCollision = true;
+				}
+			}
+			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision); // para que no atraviese
+		}
 
-		/*******************************************
-		 * Test Colisions
-		 *******************************************/
-		for (std::map<std::string,
-			std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator it =
+		//colision entre cajas (OBB)
+		for (std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > ::iterator it =
 			collidersOBB.begin(); it != collidersOBB.end(); it++) {
 			bool isCollision = false;
-			for (std::map<std::string,
-				std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator jt =
-				collidersOBB.begin(); jt != collidersOBB.end(); jt++) {
-				if (it != jt
-					&& testOBBOBB(std::get<0>(it->second),
-						std::get<0>(jt->second))) {
-					std::cout << "Colision " << it->first << " with "
-						<< jt->first << std::endl;
+			for (std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>> ::iterator
+				jt = collidersOBB.begin(); jt != collidersOBB.end() && !isCollision; jt++) {
+				if (it != jt && testOBBOBB(std::get<0>(it->second), std::get<0>(jt->second))) {
+					std::cout << "Existe colision entre: " << it->first << " y " << jt->first << std::endl;
 					isCollision = true;
 				}
 			}
-			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
+			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision); // para que no atraviese
 		}
 
-		for (std::map<std::string,
-			std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
-			collidersSBB.begin(); it != collidersSBB.end(); it++) {
+		//colision entre cajas y esferas (OBB)
+		for (std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > ::iterator it =
+			collidersOBB.begin(); it != collidersOBB.end(); it++) {
 			bool isCollision = false;
-			for (std::map<std::string,
-				std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator jt =
-				collidersSBB.begin(); jt != collidersSBB.end(); jt++) {
-				if (it != jt
-					&& testSphereSphereIntersection(std::get<0>(it->second),
-						std::get<0>(jt->second))) {
-					std::cout << "Colision " << it->first << " with "
-						<< jt->first << std::endl;
+			for (std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>> ::iterator
+				jt = collidersSBB.begin(); jt != collidersSBB.end(); jt++) {
+				if (testSphereOBox(std::get<0>(jt->second), std::get<0>(it->second))) {
+					std::cout << "Existe colision entre: " << it->first << " y " << jt->first << std::endl;
+					std::cout << "Existe colision entre: " << jt->first << " y " << it->first << std::endl;
 					isCollision = true;
+					addOrUpdateCollisionDetection(collisionDetection, jt->first, isCollision); // para que no atraviese
 				}
 			}
-			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
-		}
-
-		for (std::map<std::string,
-			std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
-			collidersSBB.begin(); it != collidersSBB.end(); it++) {
-			bool isCollision = false;
-			std::map<std::string,
-				std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator jt =
-				collidersOBB.begin();
-			for (; jt != collidersOBB.end(); jt++) {
-				if (testSphereOBox(std::get<0>(it->second),
-					std::get<0>(jt->second))) {
-					std::cout << "Colision " << it->first << " with "
-						<< jt->first << std::endl;
-					isCollision = true;
-					addOrUpdateCollisionDetection(collisionDetection, jt->first, isCollision);
-				}
-			}
-			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
+			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision); // para que no atraviese
 		}
 
 		std::map<std::string, bool>::iterator colIt;
@@ -1930,248 +1789,124 @@ void applicationLoop() {
 			if (jt != collidersOBB.end()) {
 				if (!colIt->second)
 					addOrUpdateColliders(collidersOBB, jt->first);
-				else {
-					if (jt->first.compare("mayow") == 0)
-						modelMatrixMayow = std::get<1>(jt->second);
-					if (jt->first.compare("dart") == 0)
-						modelMatrixDart = std::get<1>(jt->second);
-					if (jt->first.compare("arquero") == 0)
-						modelMatrixDart = std::get<1>(jt->second);
+				else { // cuando hay colision
+					for (int i = 0; i < listaModelos.size(); i++) {
+						if (jt->first.compare(std::to_string(i)) == 0)
+							*listaMat4[i] = std::get<1>(jt->second);
+					}
+
 				}
 			}
 		}
 
-		/*******************************************
-		 * Interpolation key frames with disconect objects
-		 *******************************************/
-		if (record && modelSelected == 1) {
-			matrixDartJoints.push_back(rotDartHead);
-			matrixDartJoints.push_back(rotDartLeftArm);
-			matrixDartJoints.push_back(rotDartLeftHand);
-			matrixDartJoints.push_back(rotDartRightArm);
-			matrixDartJoints.push_back(rotDartRightHand);
-			matrixDartJoints.push_back(rotDartLeftLeg);
-			matrixDartJoints.push_back(rotDartRightLeg);
-			if (saveFrame) {
-				appendFrame(myfile, matrixDartJoints);
-				saveFrame = false;
-			}
-		}
-		else if (keyFramesDartJoints.size() > 0) {
-			// Para reproducir el frame
-			interpolationDartJoints = numPasosDartJoints / (float)maxNumPasosDartJoints;
-			numPasosDartJoints++;
-			if (interpolationDartJoints > 1.0) {
-				numPasosDartJoints = 0;
-				interpolationDartJoints = 0;
-				indexFrameDartJoints = indexFrameDartJointsNext;
-				indexFrameDartJointsNext++;
-			}
-			if (indexFrameDartJointsNext > keyFramesDartJoints.size() - 1)
-				indexFrameDartJointsNext = 0;
-			rotDartHead = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 0, interpolationDartJoints);
-			rotDartLeftArm = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 1, interpolationDartJoints);
-			rotDartLeftHand = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 2, interpolationDartJoints);
-			rotDartRightArm = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 3, interpolationDartJoints);
-			rotDartRightHand = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 4, interpolationDartJoints);
-			rotDartLeftLeg = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 5, interpolationDartJoints);
-			rotDartRightLeg = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 6, interpolationDartJoints);
-		}
-
-		if (record && modelSelected == 2) {
-			matrixDart.push_back(modelMatrixDart);
-			if (saveFrame) {
-				appendFrame(myfile, matrixDart);
-				saveFrame = false;
-			}
-		}
-		else if (keyFramesDart.size() > 0) {
-			// Para reproducir el frame
-			interpolationDart = numPasosDart / (float)maxNumPasosDart;
-			numPasosDart++;
-			if (interpolationDart > 1.0) {
-				numPasosDart = 0;
-				interpolationDart = 0;
-				indexFrameDart = indexFrameDartNext;
-				indexFrameDartNext++;
-			}
-			if (indexFrameDartNext > keyFramesDart.size() - 1)
-				indexFrameDartNext = 0;
-			modelMatrixDart = interpolate(keyFramesDart, indexFrameDart, indexFrameDartNext, 0, interpolationDart);
-		}
-
-		// Constantes de animaciones
-		rotHelHelY += 0.5;
-		animationIndex = 1;
-
-		/*******************************************
-		 * State machines
-		 *******************************************/
-
-		 // State machine for the lambo car
-		switch (stateDoor) {
-		case 0:
-			dorRotCount += 0.5;
-			if (dorRotCount > 75)
-				stateDoor = 1;
-			break;
-		case 1:
-			dorRotCount -= 0.5;
-			if (dorRotCount < 0) {
-				dorRotCount = 0.0;
-				stateDoor = 0;
-			}
-			break;
-		}
-
-		glfwSwapBuffers(window);
-
-
 		/****************************+
 		 * Open AL sound data
 		 */
-		source0Pos[0] = modelMatrixFountain[3].x;
-		source0Pos[1] = modelMatrixFountain[3].y;
-		source0Pos[2] = modelMatrixFountain[3].z;
-		alSourcefv(source[0], AL_POSITION, source0Pos);
+		//source0Pos[0] = modelMatrixFountain[3].x;
+		//source0Pos[1] = modelMatrixFountain[3].y;
+		//source0Pos[2] = modelMatrixFountain[3].z;
+		//alSourcefv(source[0], AL_POSITION, source0Pos);
 
-		source2Pos[0] = modelMatrixDart[3].x;
-		source2Pos[1] = modelMatrixDart[3].y;
-		source2Pos[2] = modelMatrixDart[3].z;
-		alSourcefv(source[2], AL_POSITION, source2Pos);
+		//source2Pos[0] = modelMatrixDart[3].x;
+		//source2Pos[1] = modelMatrixDart[3].y;
+		//source2Pos[2] = modelMatrixDart[3].z;
+		//alSourcefv(source[2], AL_POSITION, source2Pos);
 
-		// Listener for the Thris person camera
-		listenerPos[0] = modelMatrixMayow[3].x;
-		listenerPos[1] = modelMatrixMayow[3].y;
-		listenerPos[2] = modelMatrixMayow[3].z;
-		alListenerfv(AL_POSITION, listenerPos);
+		//source3Pos[0] = modelMatrixLambo[3].x;
+		//source3Pos[1] = modelMatrixLambo[3].y;
+		//source3Pos[2] = modelMatrixLambo[3].z;
+		//alSourcefv(source[3], AL_POSITION, source3Pos);
 
-		glm::vec3 upModel = glm::normalize(modelMatrixMayow[1]);
-		glm::vec3 frontModel = glm::normalize(modelMatrixMayow[2]);
+		//// Listener for the Thris person camera
+		//listenerPos[0] = modelMatrixMayow[3].x;
+		//listenerPos[1] = modelMatrixMayow[3].y;
+		//listenerPos[2] = modelMatrixMayow[3].z;
+		//alListenerfv(AL_POSITION, listenerPos);
 
-		listenerOri[0] = frontModel.x;
-		listenerOri[1] = frontModel.y;
-		listenerOri[2] = frontModel.z;
-		listenerOri[3] = upModel.x;
-		listenerOri[4] = upModel.y;
-		listenerOri[5] = upModel.z;
+		//glm::vec3 upModel = glm::normalize(modelMatrixMayow[1]);
+		//glm::vec3 frontModel = glm::normalize(modelMatrixMayow[2]);
 
-		// Listener for the First person camera
-		/*listenerPos[0] = camera->getPosition().x;
-		listenerPos[1] = camera->getPosition().y;
-		listenerPos[2] = camera->getPosition().z;
-		alListenerfv(AL_POSITION, listenerPos);
-		listenerOri[0] = camera->getFront().x;
-		listenerOri[1] = camera->getFront().y;
-		listenerOri[2] = camera->getFront().z;
-		listenerOri[3] = camera->getUp().x;
-		listenerOri[4] = camera->getUp().y;
-		listenerOri[5] = camera->getUp().z;*/
-		alListenerfv(AL_ORIENTATION, listenerOri);
+		//listenerOri[0] = frontModel.x;
+		//listenerOri[1] = frontModel.y;
+		//listenerOri[2] = frontModel.z;
+		//listenerOri[3] = upModel.x;
+		//listenerOri[4] = upModel.y;
+		//listenerOri[5] = upModel.z;
 
-		for (unsigned int i = 0; i < sourcesPlay.size(); i++) {
-			if (sourcesPlay[i]) {
-				sourcesPlay[i] = false;
-				alSourcePlay(source[i]);
-			}
-		}
+		 /*******************************************
+		 * Test Colisions
+		 *******************************************/
+		 /*for (std::map<std::string,
+			 std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator it =
+			 collidersOBB.begin(); it != collidersOBB.end(); it++) {
+			 bool isCollision = false;
+			 for (std::map<std::string,
+				 std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator jt =
+				 collidersOBB.begin(); jt != collidersOBB.end(); jt++) {
+				 if (it != jt
+					 && testOBBOBB(std::get<0>(it->second),
+						 std::get<0>(jt->second))) {
+					 std::cout << "Colision " << it->first << " with "
+						 << jt->first << std::endl;
+					 isCollision = true;
+				 }
+			 }
+			 addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
+		 }
+
+		 for (std::map<std::string,
+			 std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
+			 collidersSBB.begin(); it != collidersSBB.end(); it++) {
+			 bool isCollision = false;
+			 for (std::map<std::string,
+				 std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator jt =
+				 collidersSBB.begin(); jt != collidersSBB.end(); jt++) {
+				 if (it != jt
+					 && testSphereSphereIntersection(std::get<0>(it->second),
+						 std::get<0>(jt->second))) {
+					 std::cout << "Colision " << it->first << " with "
+						 << jt->first << std::endl;
+					 isCollision = true;
+				 }
+			 }
+			 addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
+		 }
+
+		 for (std::map<std::string,
+			 std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
+			 collidersSBB.begin(); it != collidersSBB.end(); it++) {
+			 bool isCollision = false;
+			 std::map<std::string,
+				 std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> >::iterator jt =
+				 collidersOBB.begin();
+			 for (; jt != collidersOBB.end(); jt++) {
+				 if (testSphereOBox(std::get<0>(it->second),
+					 std::get<0>(jt->second))) {
+					 std::cout << "Colision " << it->first << " with "
+						 << jt->first << std::endl;
+					 isCollision = true;
+					 addOrUpdateCollisionDetection(collisionDetection, jt->first, isCollision);
+				 }
+			 }
+			 addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
+		 }*/
+
+		glfwSwapBuffers(window);
 	}
 }
 
 void prepareScene() {
-
 	skyboxSphere.setShader(&shaderSkybox);
-
-	modelRock.setShader(&shaderMulLighting);
-
-	modelAircraft.setShader(&shaderMulLighting);
-
 	terrain.setShader(&shaderTerrain);
-
-	// Helicopter
-	modelHeliChasis.setShader(&shaderMulLighting);
-	modelHeliHeli.setShader(&shaderMulLighting);
-	// Lamborginhi
-	modelLambo.setShader(&shaderMulLighting);
-	modelLamboLeftDor.setShader(&shaderMulLighting);
-	modelLamboRightDor.setShader(&shaderMulLighting);
-	modelLamboFrontLeftWheel.setShader(&shaderMulLighting);
-	modelLamboFrontRightWheel.setShader(&shaderMulLighting);
-	modelLamboRearLeftWheel.setShader(&shaderMulLighting);
-	modelLamboRearRightWheel.setShader(&shaderMulLighting);
-
-	// Dart Lego
-	modelDartLegoBody.setShader(&shaderMulLighting);
-	modelDartLegoMask.setShader(&shaderMulLighting);
-	modelDartLegoHead.setShader(&shaderMulLighting);
-	modelDartLegoLeftArm.setShader(&shaderMulLighting);
-	modelDartLegoRightArm.setShader(&shaderMulLighting);
-	modelDartLegoLeftHand.setShader(&shaderMulLighting);
-	modelDartLegoRightHand.setShader(&shaderMulLighting);
-	modelDartLegoLeftLeg.setShader(&shaderMulLighting);
-	modelDartLegoRightLeg.setShader(&shaderMulLighting);
-
-	//Lamp models
-	modelLamp1.setShader(&shaderMulLighting);
-	modelLamp2.setShader(&shaderMulLighting);
-	modelLampPost2.setShader(&shaderMulLighting);
-
-	//Grass
-	modelGrass.setShader(&shaderMulLighting);
-
-	//Mayow
-	mayowModelAnimate.setShader(&shaderMulLighting);
-
-	//Arquero
-	arqueroModel.setShader(&shaderMulLighting);
+	for (Model* x : listaModelos)
+		x->setShader(&shaderMulLighting);
 }
 
 void prepareDepthScene() {
-
 	skyboxSphere.setShader(&shaderDepth);
-
-	modelRock.setShader(&shaderDepth);
-
-	modelAircraft.setShader(&shaderDepth);
-
 	terrain.setShader(&shaderDepth);
-
-	// Helicopter
-	modelHeliChasis.setShader(&shaderDepth);
-	modelHeliHeli.setShader(&shaderDepth);
-	// Lamborginhi
-	modelLambo.setShader(&shaderDepth);
-	modelLamboLeftDor.setShader(&shaderDepth);
-	modelLamboRightDor.setShader(&shaderDepth);
-	modelLamboFrontLeftWheel.setShader(&shaderDepth);
-	modelLamboFrontRightWheel.setShader(&shaderDepth);
-	modelLamboRearLeftWheel.setShader(&shaderDepth);
-	modelLamboRearRightWheel.setShader(&shaderDepth);
-
-	// Dart Lego
-	modelDartLegoBody.setShader(&shaderDepth);
-	modelDartLegoMask.setShader(&shaderDepth);
-	modelDartLegoHead.setShader(&shaderDepth);
-	modelDartLegoLeftArm.setShader(&shaderDepth);
-	modelDartLegoRightArm.setShader(&shaderDepth);
-	modelDartLegoLeftHand.setShader(&shaderDepth);
-	modelDartLegoRightHand.setShader(&shaderDepth);
-	modelDartLegoLeftLeg.setShader(&shaderDepth);
-	modelDartLegoRightLeg.setShader(&shaderDepth);
-
-	//Lamp models
-	modelLamp1.setShader(&shaderDepth);
-	modelLamp2.setShader(&shaderDepth);
-	modelLampPost2.setShader(&shaderDepth);
-
-	//Grass
-	modelGrass.setShader(&shaderDepth);
-
-	//Mayow
-	mayowModelAnimate.setShader(&shaderDepth);
-
-	//Arquero
-	arqueroModel.setShader(&shaderDepth);
+	for (Model* x: listaModelos)
+		x->setShader(&shaderDepth);
 }
 
 void renderScene(bool renderParticles) {
@@ -2206,17 +1941,11 @@ void renderScene(bool renderParticles) {
 	shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(0, 0)));
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	/*******************************************
-	 * Custom objects obj
-	 *******************************************/
-	 //Rock render
-	matrixModelRock[3][1] = terrain.getHeightTerrain(matrixModelRock[3][0], matrixModelRock[3][2]);
-	modelRock.render(matrixModelRock);
 	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
 	glActiveTexture(GL_TEXTURE0);
 
 	// Render the lamps
-	for (int i = 0; i < lamp1Position.size(); i++) {
+	/*for (int i = 0; i < lamp1Position.size(); i++) {
 		lamp1Position[i].y = terrain.getHeightTerrain(lamp1Position[i].x, lamp1Position[i].z);
 		modelLamp1.setPosition(lamp1Position[i]);
 		modelLamp1.setScale(glm::vec3(0.5, 0.5, 0.5));
@@ -2234,111 +1963,47 @@ void renderScene(bool renderParticles) {
 		modelLampPost2.setScale(glm::vec3(1.0, 1.0, 1.0));
 		modelLampPost2.setOrientation(glm::vec3(0, lamp2Orientation[i], 0));
 		modelLampPost2.render();
+	}*/
+
+	//--------------------------------Render-----------------------------------
+
+	int i = 0;
+	for (glm::mat4* matrixModel : listaMat4) {
+		if (listaTipoObjeto[i] == 0) { // Es jugador
+			(* matrixModel)[3][1] = -GRAVITY * tmv * tmv + 3.5 * tmv + terrain.getHeightTerrain((*matrixModel)[3][0], (*matrixModel)[3][2]);
+			tmv = currTime - startTimeJump;
+
+			if ((*matrixModel)[3][1] < terrain.getHeightTerrain((*matrixModel)[3][0], (*matrixModel)[3][2])) {
+				isJump = false;
+				(*matrixModel)[3][1] = terrain.getHeightTerrain((*matrixModel)[3][0], (*matrixModel)[3][2]);
+				alSourceStop(source[3]);
+			}
+			glm::mat4 modelMatrixBody = glm::mat4(*matrixModel);
+			modelMatrixBody = glm::scale(modelMatrixBody, *(listaEscalas[i]));
+			listaModelos[i]->setAnimationIndex(listaIndiceAnim[i]);
+			listaModelos[i]->render(modelMatrixBody);
+		}
+		else if (listaTipoObjeto[i] == 1) { // es enemigo
+			(*matrixModel)[3][1] = terrain.getHeightTerrain((*matrixModel)[3][0], (*matrixModel)[3][2]);
+			glm::mat4 modelMatrixBody = glm::mat4(*matrixModel);
+			modelMatrixBody = glm::scale(modelMatrixBody, *(listaEscalas[i]));
+			listaModelos[i]->setAnimationIndex(listaIndiceAnim[i]);
+			listaModelos[i]->render(modelMatrixBody);
+		}
+		else if (listaTipoObjeto[i] == 2) { // es inanimado
+			(*matrixModel)[3][1] = terrain.getHeightTerrain((*matrixModel)[3][0], (*matrixModel)[3][2]);
+			glm::mat4 modelMatrixBody = glm::mat4(*matrixModel);
+			modelMatrixBody = glm::scale(modelMatrixBody, *(listaEscalas[i]));
+			listaModelos[i]->render(modelMatrixBody);
+		}
+		i++;
 	}
-
-	// Grass
-	glDisable(GL_CULL_FACE);
-	glm::vec3 grassPosition = glm::vec3(0.0, 0.0, 0.0);
-	grassPosition.y = terrain.getHeightTerrain(grassPosition.x, grassPosition.z);
-	modelGrass.setPosition(grassPosition);
-	modelGrass.render();
-	glEnable(GL_CULL_FACE);
-
-	// Fountain
-	glDisable(GL_CULL_FACE);
-	modelFountain.render(modelMatrixFountain);
-	glEnable(GL_CULL_FACE);
-
-	// Dart lego
-	// Se deshabilita el cull faces IMPORTANTE para la capa
-	glDisable(GL_CULL_FACE);
-	modelMatrixDart[3][1] = terrain.getHeightTerrain(modelMatrixDart[3][0], modelMatrixDart[3][2]);
-	glm::mat4 modelMatrixDartBody = glm::mat4(modelMatrixDart);
-	modelMatrixDartBody = glm::scale(modelMatrixDartBody, glm::vec3(0.5, 0.5, 0.5));
-	modelDartLegoBody.render(modelMatrixDartBody);
-	glm::mat4 modelMatrixDartHead = glm::mat4(modelMatrixDartBody);
-	modelMatrixDartHead = glm::rotate(modelMatrixDartHead, rotDartHead, glm::vec3(0, 1, 0));
-	modelDartLegoHead.render(modelMatrixDartHead);
-	modelDartLegoMask.render(modelMatrixDartHead);
-	glm::mat4 modelMatrixDartLeftArm = glm::mat4(modelMatrixDartBody);
-	modelMatrixDartLeftArm = glm::translate(modelMatrixDartLeftArm, glm::vec3(-0.023515, 2.43607, 0.446066));
-	modelMatrixDartLeftArm = glm::rotate(modelMatrixDartLeftArm, glm::radians(-5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartLeftArm = glm::rotate(modelMatrixDartLeftArm, rotDartLeftArm, glm::vec3(0, 0, 1));
-	modelMatrixDartLeftArm = glm::rotate(modelMatrixDartLeftArm, glm::radians(5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartLeftArm = glm::translate(modelMatrixDartLeftArm, glm::vec3(0.023515, -2.43607, -0.446066));
-	modelDartLegoLeftArm.render(modelMatrixDartLeftArm);
-	glm::mat4 modelMatrixDartLeftHand = glm::mat4(modelMatrixDartLeftArm);
-	modelMatrixDartLeftHand = glm::translate(modelMatrixDartLeftHand, glm::vec3(0.201343, 1.68317, 0.99774));
-	modelMatrixDartLeftHand = glm::rotate(modelMatrixDartLeftHand, glm::radians(-5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartLeftHand = glm::rotate(modelMatrixDartLeftHand, rotDartLeftHand, glm::vec3(0, 1, 0));
-	modelMatrixDartLeftHand = glm::rotate(modelMatrixDartLeftHand, glm::radians(5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartLeftHand = glm::translate(modelMatrixDartLeftHand, glm::vec3(-0.201343, -1.68317, -0.99774));
-	modelDartLegoLeftHand.render(modelMatrixDartLeftHand);
-	glm::mat4 modelMatrixDartRightArm = glm::mat4(modelMatrixDartBody);
-	modelMatrixDartRightArm = glm::translate(modelMatrixDartRightArm, glm::vec3(-0.023515, 2.43607, -0.446066));
-	modelMatrixDartRightArm = glm::rotate(modelMatrixDartRightArm, glm::radians(5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartRightArm = glm::rotate(modelMatrixDartRightArm, rotDartRightArm, glm::vec3(0, 0, 1));
-	modelMatrixDartRightArm = glm::rotate(modelMatrixDartRightArm, glm::radians(-5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartRightArm = glm::translate(modelMatrixDartRightArm, glm::vec3(0.023515, -2.43607, 0.446066));
-	modelDartLegoRightArm.render(modelMatrixDartRightArm);
-	glm::mat4 modelMatrixDartRightHand = glm::mat4(modelMatrixDartRightArm);
-	modelMatrixDartRightHand = glm::translate(modelMatrixDartRightHand, glm::vec3(0.201343, 1.68317, -0.99774));
-	modelMatrixDartRightHand = glm::rotate(modelMatrixDartRightHand, glm::radians(5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartRightHand = glm::rotate(modelMatrixDartRightHand, rotDartRightHand, glm::vec3(0, 1, 0));
-	modelMatrixDartRightHand = glm::rotate(modelMatrixDartRightHand, glm::radians(-5.0f), glm::vec3(1, 0, 0));
-	modelMatrixDartRightHand = glm::translate(modelMatrixDartRightHand, glm::vec3(-0.201343, -1.68317, 0.99774));
-	modelDartLegoRightHand.render(modelMatrixDartRightHand);
-	glm::mat4 modelMatrixDartLeftLeg = glm::mat4(modelMatrixDartBody);
-	modelMatrixDartLeftLeg = glm::translate(modelMatrixDartLeftLeg, glm::vec3(0, 1.12632, 0.423349));
-	modelMatrixDartLeftLeg = glm::rotate(modelMatrixDartLeftLeg, rotDartLeftLeg, glm::vec3(0, 0, 1));
-	modelMatrixDartLeftLeg = glm::translate(modelMatrixDartLeftLeg, glm::vec3(0, -1.12632, -0.423349));
-	modelDartLegoLeftLeg.render(modelMatrixDartLeftLeg);
-	glm::mat4 modelMatrixDartRightLeg = glm::mat4(modelMatrixDartBody);
-	modelMatrixDartRightLeg = glm::translate(modelMatrixDartRightLeg, glm::vec3(0, 1.12632, -0.423349));
-	modelMatrixDartRightLeg = glm::rotate(modelMatrixDartRightLeg, rotDartRightLeg, glm::vec3(0, 0, 1));
-	modelMatrixDartRightLeg = glm::translate(modelMatrixDartRightLeg, glm::vec3(0, -1.12632, 0.423349));
-	modelDartLegoRightLeg.render(modelMatrixDartRightLeg);
-	// Se regresa el cull faces IMPORTANTE para la capa
-	glEnable(GL_CULL_FACE);
-
-	/*******************************************
-	 * Custom Anim objects obj
-	 *******************************************/
-	modelMatrixMayow[3][1] = -GRAVITY * tmv * tmv + 3.5 * tmv + terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
-	tmv = currTime - startTimeJump;
-	if (modelMatrixMayow[3][1] < terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2])) {
-		isJump = false;
-		modelMatrixMayow[3][1] = terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
-	}
-	//modelMatrixMayow[3][1] = terrain.getHeightTerrain(modelMatrixMayow[3][0], modelMatrixMayow[3][2]);
-	glm::mat4 modelMatrixMayowBody = glm::mat4(modelMatrixMayow);
-	modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
-	mayowModelAnimate.setAnimationIndex(animationIndex);
-	mayowModelAnimate.render(modelMatrixMayowBody);
-
-
-	// Arquero
-	modelMatrixArquero[3][1] = -GRAVITY * tmv * tmv + 3.5 * tmv + terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2]);
-	tmv = currTime - startTimeJump;
-	if (modelMatrixArquero[3][1] < terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2])) {
-		isJump = false;
-		modelMatrixArquero[3][1] = terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2]);
-	}
-	//modelMatrixArquero[3][1] = terrain.getHeightTerrain(modelMatrixArquero[3][0], modelMatrixArquero[3][2]);
-	glm::mat4 modelMatrixArqueroBody = glm::mat4(modelMatrixArquero);
-	modelMatrixArqueroBody = glm::scale(modelMatrixArqueroBody, glm::vec3(1.0f, 1.0f, 1.0f));
-	arqueroModel.setAnimationIndex(animationIndex);
-	arqueroModel.render(modelMatrixArqueroBody);
 
 	/**********
 	 * Update the position with alpha objects
 	 */
 	 // Update the aircraft
-	blendingUnsorted.find("aircraft")->second = glm::vec3(modelMatrixAircraft[3]);
-	// Update the lambo
-	blendingUnsorted.find("lambo")->second = glm::vec3(modelMatrixLambo[3]);
-	// Update the helicopter
-	blendingUnsorted.find("heli")->second = glm::vec3(modelMatrixHeli[3]);
+	//blendingUnsorted.find("aircraft")->second = glm::vec3(modelMatrixAircraft[3]);
 
 	/**********
 	 * Sorter with alpha objects
@@ -2357,43 +2022,7 @@ void renderScene(bool renderParticles) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_CULL_FACE);
 	for (std::map<float, std::pair<std::string, glm::vec3> >::reverse_iterator it = blendingSorted.rbegin(); it != blendingSorted.rend(); it++) {
-		if (it->second.first.compare("aircraft") == 0) {
-			// Render for the aircraft model
-			glm::mat4 modelMatrixAircraftBlend = glm::mat4(modelMatrixAircraft);
-			modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 2.0;
-			modelAircraft.render(modelMatrixAircraftBlend);
-		}
-		else if (it->second.first.compare("lambo") == 0) {
-			// Lambo car
-			glm::mat4 modelMatrixLamboBlend = glm::mat4(modelMatrixLambo);
-			modelMatrixLamboBlend[3][1] = terrain.getHeightTerrain(modelMatrixLamboBlend[3][0], modelMatrixLamboBlend[3][2]);
-			modelMatrixLamboBlend = glm::scale(modelMatrixLamboBlend, glm::vec3(1.3, 1.3, 1.3));
-			modelLambo.render(modelMatrixLamboBlend);
-			glActiveTexture(GL_TEXTURE0);
-			glm::mat4 modelMatrixLamboLeftDor = glm::mat4(modelMatrixLamboBlend);
-			modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(1.08676, 0.707316, 0.982601));
-			modelMatrixLamboLeftDor = glm::rotate(modelMatrixLamboLeftDor, glm::radians(dorRotCount), glm::vec3(1.0, 0, 0));
-			modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(-1.08676, -0.707316, -0.982601));
-			modelLamboLeftDor.render(modelMatrixLamboLeftDor);
-			modelLamboRightDor.render(modelMatrixLamboBlend);
-			modelLamboFrontLeftWheel.render(modelMatrixLamboBlend);
-			modelLamboFrontRightWheel.render(modelMatrixLamboBlend);
-			modelLamboRearLeftWheel.render(modelMatrixLamboBlend);
-			modelLamboRearRightWheel.render(modelMatrixLamboBlend);
-			// Se regresa el cull faces IMPORTANTE para las puertas
-		}
-		else if (it->second.first.compare("heli") == 0) {
-			// Helicopter
-			glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli);
-			modelHeliChasis.render(modelMatrixHeliChasis);
-
-			glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis);
-			modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, -0.249548));
-			modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
-			modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
-			modelHeliHeli.render(modelMatrixHeliHeli);
-		}
-		else if (renderParticles && it->second.first.compare("fountain") == 0) {
+		if (renderParticles && it->second.first.compare("fountain") == 0) {
 			/**********
 			 * Init Render particles systems
 			 */
@@ -2480,10 +2109,573 @@ void renderScene(bool renderParticles) {
 			/**********
 			 * End Render particles systems
 			 */
+		
+		}
+	}
+
+}
+/*
+void createTextures() {
+	// Definimos el tamanio de la imagen
+	int imageWidth, imageHeight;
+	FIBITMAP* bitmap;
+	unsigned char* data;
+
+	// Carga de texturas para el skybox
+	Texture skyboxTexture = Texture("");
+	glGenTextures(1, &skyboxTextureID);
+	// Tipo de textura CUBE MAP
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureID);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	for (int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(types); i++) {
+		skyboxTexture = Texture(fileNames[i]);
+		FIBITMAP* bitmap = skyboxTexture.loadImage(true);
+		unsigned char* data = skyboxTexture.convertToData(bitmap, imageWidth,
+			imageHeight);
+		if (data) {
+			glTexImage2D(types[i], 0, GL_RGBA, imageWidth, imageHeight, 0,
+				GL_BGRA, GL_UNSIGNED_BYTE, data);
+		}
+		else
+			std::cout << "Failed to load texture" << std::endl;
+		skyboxTexture.freeImage(bitmap);
+	}
+	
+	// Definiendo la textura a utilizar
+	Texture textureCesped("../Textures/cesped.jpg");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureCesped.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureCesped.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureCespedID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureCespedID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureCesped.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureWall("../Textures/whiteWall.jpg");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureWall.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureWall.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureWallID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureWallID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureWall.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureWindow("../Textures/ventana.png");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureWindow.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureWindow.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureWindowID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureWindowID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureWindow.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureHighway("../Textures/highway.jpg");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureHighway.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureHighway.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureHighwayID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureHighwayID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureHighway.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureLandingPad("../Textures/landingPad.jpg");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureLandingPad.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureLandingPad.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureLandingPadID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureLandingPadID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureLandingPad.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureTerrainBackground("../Textures/grassy2.png");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureTerrainBackground.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureTerrainBackground.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureTerrainBackgroundID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBackgroundID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureTerrainBackground.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureTerrainR("../Textures/mud.png");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureTerrainR.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureTerrainR.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureTerrainRID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureTerrainRID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureTerrainR.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureTerrainG("../Textures/grassFlowers.png");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureTerrainG.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureTerrainG.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureTerrainGID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureTerrainGID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureTerrainG.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureTerrainB("../Textures/path.png");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureTerrainB.loadImage();
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureTerrainB.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureTerrainBID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureTerrainB.freeImage(bitmap);
+
+	// Definiendo la textura a utilizar
+	Texture textureTerrainBlendMap("../Textures/blendMap.png");
+	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
+	bitmap = textureTerrainBlendMap.loadImage(true);
+	// Convertimos el mapa de bits en un arreglo unidimensional de tipo unsigned char
+	data = textureTerrainBlendMap.convertToData(bitmap, imageWidth,
+		imageHeight);
+	// Creando la textura con id 1
+	glGenTextures(1, &textureTerrainBlendMapID);
+	// Enlazar esa textura a una tipo de textura de 2D.
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBlendMapID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Verifica si se pudo abrir la textura
+	if (data) {
+		// Transferis los datos de la imagen a memoria
+		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
+		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
+		// a los datos
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	// Libera la memoria de la textura
+	textureTerrainBlendMap.freeImage(bitmap);
+
+	std::uniform_real_distribution<float> distr01 = std::uniform_real_distribution<float>(0.0f, 1.0f);
+	std::mt19937 generator;
+	std::random_device rd;
+	generator.seed(rd());
+	int size = nParticlesFire * 2;
+	std::vector<GLfloat> randData(size);
+	for (int i = 0; i < randData.size(); i++) {
+		randData[i] = distr01(generator);
+	}
+
+	glGenTextures(1, &texId);
+	glBindTexture(GL_TEXTURE_1D, texId);
+	glTexStorage1D(GL_TEXTURE_1D, 1, GL_R32F, size);
+	glTexSubImage1D(GL_TEXTURE_1D, 0, 0, size, GL_RED, GL_FLOAT, randData.data());
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	shaderParticlesFire.setInt("Pass", 1);
+	shaderParticlesFire.setInt("ParticleTex", 0);
+	shaderParticlesFire.setInt("RandomTex", 1);
+	shaderParticlesFire.setFloat("ParticleLifetime", particleLifetime);
+	shaderParticlesFire.setFloat("ParticleSize", particleSize);
+	shaderParticlesFire.setVectorFloat3("Accel", glm::value_ptr(glm::vec3(0.0f, 0.1f, 0.0f)));
+	shaderParticlesFire.setVectorFloat3("Emitter", glm::value_ptr(glm::vec3(0.0f)));
+
+	glm::mat3 basis;
+	glm::vec3 u, v, n;
+	v = glm::vec3(0, 1, 0);
+	n = glm::cross(glm::vec3(1, 0, 0), v);
+	if (glm::length(n) < 0.00001f) {
+		n = glm::cross(glm::vec3(0, 1, 0), v);
+	}
+	u = glm::cross(v, n);
+	basis[0] = glm::normalize(u);
+	basis[1] = glm::normalize(v);
+	basis[2] = glm::normalize(n);
+	shaderParticlesFire.setMatrix3("EmitterBasis", 1, false, glm::value_ptr(basis));
+
+	/*******************************************
+	 * Inicializacion de los buffers de la fuente
+	 *******************************************/
+	/*initParticleBuffers();
+
+	/*******************************************
+	 * Inicializacion de los buffers del fuego
+	 *******************************************/
+	/*initParticleBuffersFire();
+
+	/*******************************************
+	 * Inicializacion del framebuffer para
+	 * almacenar el buffer de profunidadad
+	 *******************************************/
+	/*glGenFramebuffers(1, &depthMapFBO);
+	glGenTextures(1, &depthMap);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+		SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	/*glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);*/
+	/*glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	/*******************************************
+	 * OpenAL init
+	 *******************************************/
+	/*alutInit(0, nullptr);
+	alListenerfv(AL_POSITION, listenerPos);
+	alListenerfv(AL_VELOCITY, listenerVel);
+	alListenerfv(AL_ORIENTATION, listenerOri);
+	alGetError(); // clear any error messages
+	if (alGetError() != AL_NO_ERROR) {
+		printf("- Error creating buffers !!\n");
+		exit(1);
+	}
+	else {
+		printf("init() - No errors yet.");
+	}
+	// Config source 0
+	// Generate buffers, or else no sound will happen!
+	alGenBuffers(NUM_BUFFERS, buffer);
+	buffer[0] = alutCreateBufferFromFile("../sounds/fountain.wav");
+	buffer[1] = alutCreateBufferFromFile("../sounds/fire.wav");
+	buffer[2] = alutCreateBufferFromFile("../sounds/darth_vader.wav");
+	buffer[3] = alutCreateBufferFromFile("../sounds/lawyer1.wav");
+	int errorAlut = alutGetError();
+	if (errorAlut != ALUT_ERROR_NO_ERROR) {
+		printf("- Error open files with alut %d !!\n", errorAlut);
+		exit(2);
+	}
+
+
+	alGetError(); /* clear error */
+	/*alGenSources(NUM_SOURCES, source);
+
+	if (alGetError() != AL_NO_ERROR) {
+		printf("- Error creating sources !!\n");
+		exit(2);
+	}
+	else {
+		printf("init - no errors after alGenSources\n");
+	}
+	alSourcef(source[0], AL_PITCH, 1.0f);
+	alSourcef(source[0], AL_GAIN, 3.0f);
+	alSourcefv(source[0], AL_POSITION, source0Pos);
+	alSourcefv(source[0], AL_VELOCITY, source0Vel);
+	alSourcei(source[0], AL_BUFFER, buffer[0]);
+	alSourcei(source[0], AL_LOOPING, AL_TRUE);
+	alSourcef(source[0], AL_MAX_DISTANCE, 2000);
+
+	alSourcef(source[1], AL_PITCH, 1.0f);
+	alSourcef(source[1], AL_GAIN, 3.0f);
+	alSourcefv(source[1], AL_POSITION, source1Pos);
+	alSourcefv(source[1], AL_VELOCITY, source1Vel);
+	alSourcei(source[1], AL_BUFFER, buffer[1]);
+	alSourcei(source[1], AL_LOOPING, AL_TRUE);
+	alSourcef(source[1], AL_MAX_DISTANCE, 2000);
+
+	alSourcef(source[2], AL_PITCH, 1.0f);
+	alSourcef(source[2], AL_GAIN, 0.3f);
+	alSourcefv(source[2], AL_POSITION, source2Pos);
+	alSourcefv(source[2], AL_VELOCITY, source2Vel);
+	alSourcei(source[2], AL_BUFFER, buffer[2]);
+	alSourcei(source[2], AL_LOOPING, AL_TRUE);
+	alSourcef(source[2], AL_MAX_DISTANCE, 500);
+
+	alSourcef(source[3], AL_PITCH, 1.0f);
+	alSourcef(source[3], AL_GAIN, 0.3f);
+	alSourcefv(source[3], AL_POSITION, source3Pos);
+	alSourcefv(source[3], AL_VELOCITY, source3Vel);
+	alSourcei(source[3], AL_BUFFER, buffer[3]);
+	alSourcei(source[3], AL_LOOPING, AL_FALSE);
+	alSourcef(source[3], AL_MAX_DISTANCE, 500);
+
+	Texture textureParticlesFountain("../Textures/bluewater.png");
+	bitmap = textureParticlesFountain.loadImage();
+	data = textureParticlesFountain.convertToData(bitmap, imageWidth, imageHeight);
+	glGenTextures(1, &textureParticleFountainID);
+	glBindTexture(GL_TEXTURE_2D, textureParticleFountainID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	if (data) {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	textureParticlesFountain.freeImage(bitmap);
+
+	Texture textureParticleFire("../Textures/fire.png");
+	bitmap = textureParticleFire.loadImage();
+	data = textureParticleFire.convertToData(bitmap, imageWidth, imageHeight);
+	glGenTextures(1, &textureParticleFireID);
+	glBindTexture(GL_TEXTURE_2D, textureParticleFireID);
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	if (data) {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0,
+			GL_BGRA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	textureParticleFire.freeImage(bitmap);
+}*/
+
+void tickMovVectores(){
+
+	//qpr
+	for(int i = 0; i < listaModelos.size(); i++){
+		//Aquí se deberían demover todos los modelos, indiferente de qué tipo de cosa sean
+		
+		//Si el objeto/modelo es un proyectil, podemos forzarle una caída
+		if(listaTipoObjeto[i] == 3){
+			if((*listaMat4[i])[3][2] < 1000){
+				proyectilGenerado = false;
+			}
+			(*listaVecMov[i])[1] -= (GRAVITY / 60.0f);
 		}
 
+		*(listaMat4[i]) = glm::translate(*(listaMat4[i]), *(listaVecMov[i])); 
 	}
-	glEnable(GL_CULL_FACE);
+
 }
 
 int main(int argc, char** argv) {
@@ -2492,3 +2684,4 @@ int main(int argc, char** argv) {
 	destroy();
 	return 1;
 }
+
